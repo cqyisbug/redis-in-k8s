@@ -1,0 +1,30 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sf-redis-sentinel
+spec:
+  serviceName: "svc-redis-sentinel"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        name: sf-redis-sentinel
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cont-redis-sentinel
+        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:v3
+        env:
+        - name: SENTINEL
+          value: "true"
+        - name: MASTER_IP
+          value: sf-redis-master-0.svc-redis-master 
+        - name: MASTER_PORT
+          value: "6379"
+        - name: SENTINEL_IP
+          value: sf-redis-sentinel-0.svc-redis-sentinel
+        - name: SENTINEL_PORT
+          value: "6381"
+        ports:
+        - containerPort: 6381

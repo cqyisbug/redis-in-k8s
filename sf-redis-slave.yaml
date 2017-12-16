@@ -1,0 +1,41 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sf-redis-slave
+spec:
+  serviceName: "svc-redis-slave"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        name: sf-redis-slave
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cont-redis-slave
+        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:v3
+        env:
+        - name: MASTER_IP
+          value: sf-redis-master-0.svc-redis-master
+        - name: MASTER_PORT
+          value: "6379"
+        - name: SENTINEL_IP
+          value: sf-redis-sentinel-0.svc-redis-sentinel 
+        - name: SENTINEL_PORT
+          value: "6381"
+        ports:
+        - containerPort: 6380
+        volumeMounts:
+        - name: redis-sl-p-storage
+          mountPath: /data/redis/slave
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-sl-p-storage
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "fast"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 20Gi

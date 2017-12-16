@@ -1,0 +1,13 @@
+piVersion: v1
+kind: Service
+metadata:
+  name: svc-redis-slave
+  labels:
+    name: svc-redis-slave
+spec:
+  ports:
+  - port: 6380
+    targetPort: 6380
+  clusterIP: None
+  selector:
+    name: sf-redis-slave
