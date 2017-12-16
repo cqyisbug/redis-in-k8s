@@ -32,8 +32,8 @@ function launchmaster() {
 
   guard=0
   while [[ guard -le 10 ]] ; do
-    sentinel=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
-    master=$(redis-cli -h ${sentinel} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+    sentinel_ip=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+    master=$(redis-cli -h ${sentinel_ip} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
    	if [[ -n ${master} ]] && [[ ${master} != "ERROR" ]] ; then
       master="${master//\"}"
       redis-cli -h ${master} -p ${MASTER_PORT} INFO

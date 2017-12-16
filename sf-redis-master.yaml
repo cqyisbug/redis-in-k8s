@@ -22,6 +22,8 @@ spec:
           value: sf-redis-sentinel-0.svc-redis-sentinel
         - name: SENTINEL_PORT
           value: "26379"
+        - name: MASTER_PORT
+          value: "6379"
         ports:
         - containerPort: 6379
         volumeMounts:
