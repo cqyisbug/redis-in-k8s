@@ -38,17 +38,22 @@ function launchmaster() {
       master="${master//\"}"
       redis-cli -h ${master} -p ${MASTER_PORT} INFO
       if [[ "$?" == "0" ]]; then
+        sed -i "s/%master-ip%/${master}/" /config/redis/slave.conf
+        sed -i "s/%master-port%/${MASTER_PORT}/" /config/redis/slave.conf
+        redis-server  /config/redis/slave.conf --protected-mode no
         break
       fi
       echo "Connecting to master failed.  Waiting..."
-      sleep 2
     else
-      sleep 2
       let guard++
     fi
-  done
 
-  redis-server /config/redis/master.conf --protected-mode no
+    if [[ guard -e 11 ]] ; then
+      redis-server /config/redis/master.conf --protected-mode no
+      break
+    fi
+    sleep 2
+  done
 }
 
 function launchsentinel() {
