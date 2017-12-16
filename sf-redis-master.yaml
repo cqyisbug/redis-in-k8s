@@ -18,6 +18,10 @@ spec:
         env:
         - name: MASTER
           value: "true"
+        - name: SENTINEL_HOST
+          value: sf-redis-sentinel-0.svc-redis-sentinel
+        - name: SENTINEL_PORT
+          value: "26379"
         ports:
         - containerPort: 6379
         volumeMounts:

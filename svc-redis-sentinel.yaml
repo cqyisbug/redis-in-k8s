@@ -6,8 +6,8 @@ metadata:
     name: svc-redis-sentinel
 spec:
   ports:
-  - port: 6381
-    targetPort: 6381
+  - port: 26379
+    targetPort: 26379
   clusterIP: None
   selector:
     name: sf-redis-sentinel

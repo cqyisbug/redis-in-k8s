@@ -14,28 +14,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# master节点
+# 比较特殊
+# 如果发现重启的是master节点
+# 如果是集群第一次启动的时候，master节点比较正常
+# 如果master节点已经重启了，这个时候master是以slave的身份启动的
+
 function launchmaster() {
   if [[ ! -e /data/redis/master ]]; then
     echo "Redis master data doesn't exist, creating dictionary!"
     mkdir -p /data/redis/master
   fi
+
+  echo "redis master port is : " ${MASTER_PORT}
+  echo "redis sentinel ip is : " ${SENTINEL_HOST}
+  echo "redis sentinel port is : " ${SENTINEL_PORT}
+
+  guard=0
+  while [[ guard -le 10 ]] ; do
+    sentinel=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+    master=$(redis-cli -h ${sentinel} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+   	if [[ -n ${master} ]] && [[ ${master} != "ERROR" ]] ; then
+      master="${master//\"}"
+      redis-cli -h ${master} -p ${MASTER_PORT} INFO
+      if [[ "$?" == "0" ]]; then
+        break
+      fi
+      echo "Connecting to master failed.  Waiting..."
+      sleep 2
+    else
+      sleep 2
+      let guard++
+    fi
+  done
+
   redis-server /config/redis/master.conf --protected-mode no
 }
 
 function launchsentinel() {
-  echo "redis master ip is : " ${MASTER_IP}
+  echo "redis master ip is : " ${MASTER_HOST}
   echo "redis master port is : " ${MASTER_PORT}
-  echo "redis sentinel ip is : " ${SENTINEL_IP}
+  echo "redis sentinel ip is : " ${SENTINEL_HOST}
   echo "redis sentinel port is : " ${SENTINEL_PORT}
   while true; do
-    master=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+    sentinel_ip=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+    # 不断根据哨兵节点的dns地址解析到ip地址，然后进行查询
+    master=$(redis-cli -h ${sentinel_ip} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
     if [[ -n ${master} ]] && [[ ${master} != "ERROR" ]] ; then
       master="${master//\"}"
     else
       echo "could not find sentinel nodes. direct to master node"
-      master="${MASTER_IP}"
-	  master=$(nslookup ${MASTER_IP}} | grep 'Address' | awk '{print $3}')
-      # master=$(hostname -i)
+	    master=$(nslookup ${MASTER_HOST}} | grep 'Address' | awk '{print $3}')
     fi
 
     redis-cli -h ${master} -p ${MASTER_PORT} INFO
@@ -48,7 +77,7 @@ function launchsentinel() {
 
   sentinel_conf=/config/redis/sentinel.conf
   
-  echo "port 6381" > ${sentinel_conf}
+  echo "port 26379" > ${sentinel_conf}
   echo "sentinel monitor mymaster ${master} ${MASTER_PORT} 2" >> ${sentinel_conf}
   echo "sentinel down-after-milliseconds mymaster 60000" >> ${sentinel_conf}
   echo "sentinel failover-timeout mymaster 180000" >> ${sentinel_conf}
@@ -59,9 +88,9 @@ function launchsentinel() {
 }
 
 function launchslave() {
-  echo "redis master ip is : " ${MASTER_IP}
+  echo "redis master ip is : " ${MASTER_HOST}
   echo "redis master port is : " ${MASTER_PORT}
-  echo "redis sentinel ip is : " ${SENTINEL_IP}
+  echo "redis sentinel ip is : " ${SENTINEL_HOST}
   echo "redis sentinel port is : " ${SENTINEL_PORT}
 
   if [[ ! -e /data/redis/slave ]]; then
@@ -70,12 +99,14 @@ function launchslave() {
   fi
 
   while true; do
-    master=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+    sentinel=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+    master=$(redis-cli -h ${sentinel} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
    	if [[ -n ${master} ]] && [[ ${master} != "ERROR" ]] ; then
       master="${master//\"}"
     else
       echo "could not find sentinel nodes. direct to master node"
-      master="${MASTER_IP}"
+      #master="${MASTER_HOST}"
+      master=$(nslookup ${MASTER_HOST}} | grep 'Address' | awk '{print $3}')
       # master=$(hostname -i)
     fi
     redis-cli -h ${master} -p ${MASTER_PORT} INFO

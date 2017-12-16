@@ -6,8 +6,8 @@ metadata:
     name: svc-redis-slave
 spec:
   ports:
-  - port: 6380
-    targetPort: 6380
+  - port: 6379
+    targetPort: 6379
   clusterIP: None
   selector:
     name: sf-redis-slave
