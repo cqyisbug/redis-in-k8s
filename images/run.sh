@@ -31,9 +31,9 @@ function launchmaster() {
   echo "redis sentinel port is : " ${SENTINEL_PORT}
 
   guard=0
-  while [[ guard -le 10 ]] ; do
-    sentinel_ip=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
-    master=$(redis-cli -h ${sentinel_ip} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+  while [[ $guard -lt 10 ]] ; do
+    SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+    master=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
    	if [[ -n ${master} ]] && [[ ${master} != "ERROR" ]] ; then
       master="${master//\"}"
       redis-cli -h ${master} -p ${MASTER_PORT} INFO
@@ -42,13 +42,14 @@ function launchmaster() {
         sed -i "s/%master-port%/${MASTER_PORT}/" /config/redis/slave.conf
         redis-server  /config/redis/slave.conf --protected-mode no
         break
-      fi
-      echo "Connecting to master failed.  Waiting..."
-    else
-      let guard++
+      else 
+       echo "Connecting to master failed.  Waiting..."
+      fi 
     fi
-
-    if [[ guard -e 11 ]] ; then
+      
+    let guard++
+    
+    if [[ $guard -eq 10 ]] ; then
       redis-server /config/redis/master.conf --protected-mode no
       break
     fi
@@ -62,9 +63,9 @@ function launchsentinel() {
   echo "redis sentinel ip is : " ${SENTINEL_HOST}
   echo "redis sentinel port is : " ${SENTINEL_PORT}
   while true; do
-    sentinel_ip=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+    SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
     # 不断根据哨兵节点的dns地址解析到ip地址，然后进行查询
-    master=$(redis-cli -h ${sentinel_ip} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+    master=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
     if [[ -n ${master} ]] && [[ ${master} != "ERROR" ]] ; then
       master="${master//\"}"
     else
