@@ -70,7 +70,7 @@ function launchsentinel() {
       master="${master//\"}"
     else
       echo "could not find sentinel nodes. direct to master node"
-	    master=$(nslookup ${MASTER_HOST}} | grep 'Address' | awk '{print $3}')
+	    master=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
     fi
 
     redis-cli -h ${master} -p ${MASTER_PORT} INFO
@@ -112,7 +112,7 @@ function launchslave() {
     else
       echo "could not find sentinel nodes. direct to master node"
       #master="${MASTER_HOST}"
-      master=$(nslookup ${MASTER_HOST}} | grep 'Address' | awk '{print $3}')
+      master=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
       # master=$(hostname -i)
     fi
     redis-cli -h ${master} -p ${MASTER_PORT} INFO
