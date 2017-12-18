@@ -40,6 +40,10 @@ function launchmaster() {
       if [[ "$?" == "0" ]]; then
         sed -i "s/%master-ip%/${master}/" /config/redis/slave.conf
         sed -i "s/%master-port%/${MASTER_PORT}/" /config/redis/slave.conf
+		pp="/data/redis/master"
+		sed -i "s|%persistent_path%|${pp}|" /config/redis/slave.conf
+		master_ip=$(hostname -i)
+		echo "slave-announce-ip ${master_ip}" >> /config/redis/slave.conf
         redis-server  /config/redis/slave.conf --protected-mode no
         break
       else 
@@ -82,10 +86,13 @@ function launchsentinel() {
   done
 
   sentinel_conf=/config/redis/sentinel.conf
-  
-  echo "port 26379" > ${sentinel_conf}
+  sentinel_ip = $(hostname -i)
+
+  # echo "sentinel announce-ip ${sentinel_ip} " > ${sentinel_conf} 
+  # echo "sentinel announce-port 26379 " >> ${sentinel_conf} 
+  echo "port 26379" >> ${sentinel_conf}
   echo "sentinel monitor mymaster ${master} ${MASTER_PORT} 2" >> ${sentinel_conf}
-  echo "sentinel down-after-milliseconds mymaster 60000" >> ${sentinel_conf}
+  echo "sentinel down-after-milliseconds mymaster 30000" >> ${sentinel_conf}
   echo "sentinel failover-timeout mymaster 180000" >> ${sentinel_conf}
   echo "sentinel parallel-syncs mymaster 1" >> ${sentinel_conf}
   echo "bind 0.0.0.0" >> ${sentinel_conf}
@@ -122,8 +129,18 @@ function launchslave() {
     echo "Connecting to master failed.  Waiting..."
     sleep 10
   done
+  
+  SLAVE_IP=$(hostname -i)  
+
   sed -i "s/%master-ip%/${master}/" /config/redis/slave.conf
   sed -i "s/%master-port%/${MASTER_PORT}/" /config/redis/slave.conf
+  pp="/data/redis/slave"
+  sed -i "s|%persistent_path%|${pp}|" /config/redis/slave.conf
+
+  
+  echo "slave-announce-ip ${SLAVE_IP}" >> /config/redis/slave.conf
+  echo "slave-announce-port 6379" >> /config/redis/slave.conf   
+
   redis-server  /config/redis/slave.conf --protected-mode no
 }
 
