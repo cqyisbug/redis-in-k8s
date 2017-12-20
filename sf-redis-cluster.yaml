@@ -1,39 +1,31 @@
 apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
-  name: sf-redis-slave
+  name: sf-redis-cluster
 spec:
-  serviceName: "svc-redis-slave"
-  replicas: 3
+  serviceName: "svc-redis-cluster"
+  replicas: 6
   template:
     metadata:
       labels:
-        name: sf-redis-slave
+        name: sf-redis-cluster
         environment: test
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-      - name: cont-redis-slave
+      - name: cont-redis-cluster
         image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b9
         env:
-        - name: SLAVE
+        - name: CLUSTER
           value: "true"
-        - name: MASTER_HOST
-          value: sf-redis-master-0.svc-redis-master
-        - name: MASTER_PORT
-          value: "6379"
-        - name: SENTINEL_HOST
-          value: sf-redis-sentinel-0.svc-redis-sentinel 
-        - name: SENTINEL_PORT
-          value: "26379"
         ports:
         - containerPort: 6379
         volumeMounts:
-        - name: redisslave
-          mountPath: /data/redis/slave
+        - name: rediscluster
+          mountPath: /data/redis/cluster
   volumeClaimTemplates:
   - metadata:
-      name: redisslave
+      name: rediscluster
       annotations:
         volume.beta.kubernetes.io/storage-class: "fast"
     spec:

@@ -1,27 +1,70 @@
-# Copyright 2016 The Kubernetes Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+FROM alpine:3.6
 
-FROM alpine:3.4
+# redis docker images
+# author caiqyxyx
+# date 2017 12 17
 
-RUN apk add --no-cache redis sed bash
+
+
+RUN apk add --no-cache 'su-exec>=0.2' sed bash ruby
+
+ENV REDIS_VERSION 4.0.1
+ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-4.0.1.tar.gz
+ENV REDIS_DOWNLOAD_SHA 2049cd6ae9167f258705081a6ef23bb80b7eff9ff3d0d7481e89510f27457591
+
+# 下载redis 并且编译
+RUN set -ex; \
+	\
+	apk add --no-cache --virtual .build-deps \
+		coreutils \
+		gcc \
+		linux-headers \
+		make \
+		musl-dev \
+	; \
+	\
+	wget -O redis.tar.gz "$REDIS_DOWNLOAD_URL"; \
+	echo "$REDIS_DOWNLOAD_SHA *redis.tar.gz" | sha256sum -c -; \
+	mkdir -p /usr/src/redis; \
+	tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1; \
+	rm redis.tar.gz; \
+	\
+	grep -q '^#define CONFIG_DEFAULT_PROTECTED_MODE 1$' /usr/src/redis/src/server.h; \
+	sed -ri 's!^(#define CONFIG_DEFAULT_PROTECTED_MODE) 1$!\1 0!' /usr/src/redis/src/server.h; \
+	grep -q '^#define CONFIG_DEFAULT_PROTECTED_MODE 0$' /usr/src/redis/src/server.h; \
+	\
+	make -C /usr/src/redis -j "$(nproc)"; \
+	make -C /usr/src/redis install; \
+	\
+	mkdir -p /code/redis ;\
+	\
+	mv /usr/src/redis/src/redis-trib.rb /code/redis/redis-trib.rb ;\
+	\
+	rm -r /usr/src/redis; \
+
+    apk del .build-deps
+
+
+#  安装ruby环境  由于ruby的原因安装gem install redis的时候会稍微报点错,但是这个错误在docker里面会被捕捉到,所以放到shell 脚本里面去了
+#RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/
+#RUN gem install redis -V
+#RUN export PATH="$PATH:/usr/src/redis/src/"
+
+RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/;
+
+
+EXPOSE 6379
+EXPOSE 26379
+
 
 COPY redis-master.conf /config/redis/master.conf
 COPY redis-slave.conf /config/redis/slave.conf
+COPY redis-cluster.conf /config/redis/cluster.conf
 RUN touch /config/redis/sentinel.conf
-COPY run.sh /code/redis/run.sh
+COPY run_new.sh /code/redis/run.sh
 
 RUN chmod 777 /code/redis/run.sh
 
 CMD [ "/code/redis/run.sh" ]
+#CMD ["pwd"]
 ENTRYPOINT [ "bash", "-c" ]

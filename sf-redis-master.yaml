@@ -14,7 +14,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: cont-redis-master
-        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:v11
+        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b9
         env:
         - name: MASTER
           value: "true"
@@ -27,15 +27,15 @@ spec:
         ports:
         - containerPort: 6379
         volumeMounts:
-        - name: redis-m-p-storage
+        - name: redismaster
           mountPath: /data/redis/master
   volumeClaimTemplates:
   - metadata:
-      name: redis-m-p-storage
+      name: redismaster
       annotations:
         volume.beta.kubernetes.io/storage-class: "fast"
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 8Gi
+          storage: 3Gi

@@ -1,0 +1,22 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sf-redis-cc
+spec:
+  serviceName: "svc-redis-cc"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: sf-redis-cc
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cont-redis-cc
+        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b9
+        env:
+        - name: CLUSTER_CTRL
+          value: "true"
+        ports:
+        - containerPort: 6379
