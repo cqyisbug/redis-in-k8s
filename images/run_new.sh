@@ -72,7 +72,7 @@ function master_launcher(){
 			# 新一轮开始啦。。。
 		    guard=0
 		fi
-		sleep 1
+		sleep 5
 	done
 }
 
@@ -93,7 +93,7 @@ function slave_launcher(){
 		if [[ -n ${MASTER_IP} ]] && [[ ${MASTER_IP} != "ERROR" ]] ; then
 			MASTER_IP="${MASTER_IP//\"}"
 		else
-		    sleep 10
+		    sleep 5
 		    continue
 #			echo_info "Could not find sentinel nodes. direct to master node"
 #			MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
@@ -106,7 +106,7 @@ function slave_launcher(){
 		fi
 
 		echo_warn "Connecting to master failed.  Waiting..."
-		sleep 10
+		sleep 5
 	done
 	
 	THIS_IP=$(hostname -i)  
@@ -194,12 +194,16 @@ function cluster_ctrl_launcher(){
 
         if test $index -eq 6 ; then
             echo_info "Cluster controller start working...."
-            /code/redis/redis-trib.rb create --replicas 1 $CLUSTER_CONFIG
+            yes yes | head -1 | /code/redis/redis-trib.rb create --replicas 1 $CLUSTER_CONFIG
             break
         else
             sleep 1
             continue
         fi
+    done
+
+    while true ; do
+        sleep 60
     done
 }
 
@@ -226,32 +230,35 @@ if test ! -e /data/redis/cluster ; then
 	mkdir -p /data/redis/cluster
 fi
 
+if test -n $1 ; then
+    echo $1
+    exit 0
+fi
+
 if [[ $MASTER == "true" ]] ; then
 	master_launcher
+	exit 0
 fi
 
 if [[ $SLAVE == "true" ]] ; then
 	slave_launcher
+	exit 0
 fi
 
 if [[ $SENTINEL == "true" ]] ; then
 	sentinel_launcher
+	exit 0
 fi
 
 if [[ $CLUSTER == "true" ]] ; then
 	cluster_launcher
+	exit 0
 fi
 
 if [[ $CLUSTER_CTRL == "true" ]] ; then
 	cluster_ctrl_launcher
+	exit 0
 fi
-
-
-if test -n $1 ; then
-    echo $1
-fi
-
-
 
 echo_info "************************************************************************************"
 echo_info "***********************                                   **************************"

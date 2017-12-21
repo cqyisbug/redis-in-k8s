@@ -4,8 +4,6 @@ FROM alpine:3.6
 # author caiqyxyx
 # date 2017 12 17
 
-
-
 RUN apk add --no-cache 'su-exec>=0.2' sed bash ruby
 
 ENV REDIS_VERSION 4.0.1
@@ -41,9 +39,8 @@ RUN set -ex; \
 	mv /usr/src/redis/src/redis-trib.rb /code/redis/redis-trib.rb ;\
 	\
 	rm -r /usr/src/redis; \
-
+	\
     apk del .build-deps
-
 
 #  安装ruby环境  由于ruby的原因安装gem install redis的时候会稍微报点错,但是这个错误在docker里面会被捕捉到,所以放到shell 脚本里面去了
 #RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/
@@ -52,10 +49,8 @@ RUN set -ex; \
 
 RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/;
 
-
 EXPOSE 6379
 EXPOSE 26379
-
 
 COPY redis-master.conf /config/redis/master.conf
 COPY redis-slave.conf /config/redis/slave.conf

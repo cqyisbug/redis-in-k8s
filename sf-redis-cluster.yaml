@@ -14,7 +14,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: cont-redis-cluster
-        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b9
+        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b14
         env:
         - name: CLUSTER
           value: "true"
@@ -23,6 +23,9 @@ spec:
         volumeMounts:
         - name: rediscluster
           mountPath: /data/redis/cluster
+        securityContext:
+          capabilities: {}
+          privileged: true
   volumeClaimTemplates:
   - metadata:
       name: rediscluster

@@ -14,7 +14,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: cont-redis-sentinel
-        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b9
+        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b14
         env:
         - name: SENTINEL
           value: "true"

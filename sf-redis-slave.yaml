@@ -14,7 +14,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: cont-redis-slave
-        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b9
+        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:b14
         env:
         - name: SLAVE
           value: "true"
@@ -31,6 +31,9 @@ spec:
         volumeMounts:
         - name: redisslave
           mountPath: /data/redis/slave
+        securityContext:
+          capabilities: {}
+          privileged: true
   volumeClaimTemplates:
   - metadata:
       name: redisslave
