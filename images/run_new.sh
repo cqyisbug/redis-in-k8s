@@ -265,10 +265,10 @@ if test ! -e /data/redis/cluster ; then
 	mkdir -p /data/redis/cluster
 fi
 
-if test -n $1 ; then
-    echo $1
-    exit 0
-fi
+#if test -n $1 ; then
+#    echo $1
+#    exit 0
+#fi
 
 if [[ $MASTER == "true" ]] ; then
 	master_launcher
