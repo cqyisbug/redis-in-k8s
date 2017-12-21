@@ -4,7 +4,6 @@ metadata:
   name: sf-redis-sentinel
 spec:
   serviceName: "svc-redis-sentinel"
-  podManagementPolicy: "Parallel"
   replicas: 3
   template:
     metadata:

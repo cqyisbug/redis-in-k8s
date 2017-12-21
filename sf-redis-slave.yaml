@@ -4,7 +4,6 @@ metadata:
   name: sf-redis-slave
 spec:
   serviceName: "svc-redis-slave"
-  podManagementPolicy: "Parallel"
   replicas: 3
   template:
     metadata:

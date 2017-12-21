@@ -4,7 +4,6 @@ metadata:
   name: sf-redis-master
 spec:
   serviceName: "svc-redis-master"
-  podManagementPolicy: "Parallel"
   replicas: 1
   template:
     metadata:

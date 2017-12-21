@@ -19,6 +19,7 @@
 #
 #==================================================================================================================
 
+
 function echo_warn(){
 	echo -e "\033[33m$1\033[0m"
 }
@@ -29,6 +30,22 @@ function echo_info(){
 
 function echo_error(){
 	echo -e "\033[31m$1\033[0m"
+}
+
+
+function log_info(){
+    time=$(date "+%Y-%m-%d %H:%M:%S")
+    echo -e "\033[36m$time  -  $1\033[0m"
+}
+
+function log_warn(){
+    time=$(date "+%Y-%m-%d %H:%M:%S")
+	echo -e "\033[33m$time  -  $1\033[0m"
+}
+
+function log_error(){
+    time=$(date "+%Y-%m-%d %H:%M:%S")
+	echo -e "\033[31m$time  -  $1\033[0m"
 }
 
 function master_launcher(){
@@ -61,18 +78,19 @@ function master_launcher(){
 				redis-server /config/redis/slave.conf --protected-mode no
 				break
 			else
-				echo_error "Connecting to master failed . Waiting...."
+				log_error "Connecting to master failed . Waiting...."
 			fi
 		fi
 		let guard++
 		# 如果循环了多次，都没有找到，那么就放弃啦，再来一轮寻找
 		if test $guard -eq 10 ; then
-			echo_info "Starting master ...."
+			log_info "Starting master ...."
 			redis-server /config/redis/master.conf --protected-mode no
+			break
 			# 新一轮开始啦。。。
-		    guard=0
+		    # guard=0
 		fi
-		sleep 5
+		sleep 2
 	done
 }
 
@@ -93,7 +111,7 @@ function slave_launcher(){
 		if [[ -n ${MASTER_IP} ]] && [[ ${MASTER_IP} != "ERROR" ]] ; then
 			MASTER_IP="${MASTER_IP//\"}"
 		else
-		    sleep 5
+		    sleep 2
 		    continue
 #			echo_info "Could not find sentinel nodes. direct to master node"
 #			MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
@@ -105,7 +123,7 @@ function slave_launcher(){
 			break
 		fi
 
-		echo_error "Connecting to master failed.  Waiting..."
+		log_error "Connecting to master failed.  Waiting..."
 		sleep 5
 	done
 	
@@ -125,7 +143,7 @@ function slave_launcher(){
 
 function sentinel_launcher(){
 
-	echo_info "Starting sentinels..."
+	log_info "Starting sentinels..."
 	echo -e "\n"
 
 	echo_info "************************************************************************************"
@@ -171,7 +189,7 @@ function sentinel_launcher(){
                 if test "$?" == "0" ; then
                     break 3
                 fi
-                echo_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
+                log_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
             done
             if test $index -eq 10 ; then
                 MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
@@ -179,7 +197,7 @@ function sentinel_launcher(){
                 if test "$?" == "0" ; then
                     break 2
                 fi
-                echo_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
+                log_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
             fi
         done
     done
@@ -197,7 +215,7 @@ function sentinel_launcher(){
 }
 
 function cluster_launcher(){
-	echo_info "Starting cluster ..."
+	log_info "Starting cluster ..."
 	echo -e "\n\n"
 	redis-server /config/redis/cluster.conf --protected-mode no
 }
@@ -210,7 +228,7 @@ function cluster_ctrl_launcher(){
 	echo_info "************************************************************************************"
 
 
-	echo_info "Config the cluster node..."
+	log_info "Config the cluster node..."
 
     # 安装redis的ruby环境
     gem install rdoc
@@ -228,7 +246,7 @@ function cluster_ctrl_launcher(){
         done
 
         if test $index -eq 6 ; then
-            echo_info "Cluster controller start working...."
+            log_info "Cluster controller start working...."
             yes yes | head -1 | /code/redis/redis-trib.rb create --replicas 1 $CLUSTER_CONFIG
             break
         else
