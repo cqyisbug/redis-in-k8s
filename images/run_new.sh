@@ -61,7 +61,7 @@ function master_launcher(){
 				redis-server /config/redis/slave.conf --protected-mode no
 				break
 			else
-				echo_warn "Connecting to master failed . Waiting...."
+				echo_error "Connecting to master failed . Waiting...."
 			fi
 		fi
 		let guard++
@@ -105,7 +105,7 @@ function slave_launcher(){
 			break
 		fi
 
-		echo_warn "Connecting to master failed.  Waiting..."
+		echo_error "Connecting to master failed.  Waiting..."
 		sleep 5
 	done
 	
@@ -132,29 +132,57 @@ function sentinel_launcher(){
 	echo_info "***********************                                   "
 	echo_info "***********************   Master Host  : $MASTER_HOST     "
 	echo_info "***********************   Master Port  : $MASTER_PORT     "
-	echo_info "***********************   Sentinel HOST: $SENTINEL_HOST   "
+	echo_info "***********************   Sentinel SVC : $SENTINEL_SVC    "
 	echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
 	echo_info "***********************                                   "
 	echo_info "************************************************************************************"
 
-  	while true; do
-    	SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
-		# 不断根据哨兵节点的dns地址解析到ip地址，然后进行查询
-		MASTER_IP=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
-		if [[ -n ${MASTER_IP} &&  ${MASTER_IP} != "ERROR" ]] ; then
-			MASTER_IP="${MASTER_IP//\"}"
-		else
-			echo_info "Could not find sentinel nodes. direct to master node..."
-			MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
-		fi
+#  	while true; do
+#    	SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+#		# 不断根据哨兵节点的dns地址解析到ip地址，然后进行查询
+#		MASTER_IP=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+#		if [[ -n ${MASTER_IP} &&  ${MASTER_IP} != "ERROR" ]] ; then
+#			MASTER_IP="${MASTER_IP//\"}"
+#		else
+#			echo_info "Could not find sentinel nodes. direct to master node..."
+#			MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
+#		fi
+#
+#		redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
+#		if test "$?" == "0" ; then
+#			break
+#		fi
+#		echo_warn "Connecting to master failed.  Waiting..."
+#		sleep 10
+#	done
 
-		redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
-		if test "$?" == "0" ; then
-			break
-		fi
-		echo_warn "Connecting to master failed.  Waiting..."
-		sleep 10
-	done
+	while true; do
+        index=0
+        while true; do
+            let index++
+            IP_ARRAY=$(nslookup $SENTINEL_SVC | grep 'Address' |awk '{print $3}' )
+            for IP in $IP_ARRAY ;
+            do
+                MASTER_IP=$(redis-cli -h ${IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+                if [[ -n ${MASTER_IP} &&  ${MASTER_IP} != "ERROR" ]] ; then
+                    MASTER_IP="${MASTER_IP//\"}"
+                fi
+                redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
+                if test "$?" == "0" ; then
+                    break 3
+                fi
+                echo_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
+            done
+            if test $index -eq 10 ; then
+                MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
+                redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
+                if test "$?" == "0" ; then
+                    break 2
+                fi
+                echo_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
+            fi
+        done
+    done
 
 	sentinel_conf=/config/redis/sentinel.conf
  
@@ -175,6 +203,13 @@ function cluster_launcher(){
 }
 
 function cluster_ctrl_launcher(){
+	echo_info "************************************************************************************"
+	echo_info "***********************                                   "
+	echo_info "***********************   CLUSTER SVC  : $CLUSTER_SVC     "
+	echo_info "***********************                                   "
+	echo_info "************************************************************************************"
+
+
 	echo_info "Config the cluster node..."
 
     # 安装redis的ruby环境
@@ -183,7 +218,7 @@ function cluster_ctrl_launcher(){
 
     while true; do
 
-        IP_ARRAY=$(nslookup svc-redis-cluster | grep 'Address' |awk '{print $3}')
+        IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
         CLUSTER_CONFIG=""
         index=0
         for ip in $IP_ARRAY ;
