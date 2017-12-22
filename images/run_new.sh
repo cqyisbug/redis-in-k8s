@@ -298,6 +298,7 @@ if test $# -ne 0 ; then
             echo "end"
         ;;
     esac
+    exit 0
 fi
 
 time=$(date "+%Y-%m-%d")
