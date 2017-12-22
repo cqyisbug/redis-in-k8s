@@ -201,7 +201,11 @@ function sentinel_launcher(){
 
 function cluster_launcher(){
 	log_info "Starting cluster ..."
-	echo -e "\n\n"
+
+	THIS_IP=$(hostname -i)
+	echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
+	echo "slave-announce-port 6379" >> /config/redis/cluster.conf
+
 	redis-server /config/redis/cluster.conf --protected-mode no
 }
 
@@ -227,7 +231,7 @@ function cluster_ctrl_launcher(){
         index=0
         for ip in $IP_ARRAY ;
         do
-            redis-cli -h ${ip} -p 6379 INFO
+            redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
             if test "$?" != "0" ; then
                 log_info "Connected to $ip failed ,executing break"
                 break
@@ -246,7 +250,7 @@ function cluster_ctrl_launcher(){
             break
         else
             log_info "sleep a while ... 1 sec"
-            sleep 1
+            sleep 5
             continue
         fi
     done
@@ -257,11 +261,57 @@ function cluster_ctrl_launcher(){
     done
 }
 
+
+if test $# -ne 0 ; then
+    time=$(date "+%Y-%m-%d")
+    echo_info "************************************************************************************"
+    echo_info "***********************                                   **************************"
+    echo_info "***********************          RedisScript start        **************************"
+    echo_info "***********************          Author: Caiqyxyx         **************************"
+    echo_info "***********************          Date: $time         **************************"
+    echo_info "***********************                                   **************************"
+    echo_info "************************************************************************************"
+
+    case $1 in
+        "nodes")
+            while true;do
+                IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
+                CLUSTER_CONFIG=""
+                index=0
+                for ip in $IP_ARRAY ;
+                do
+                    redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
+                    if test "$?" == "0" ; then
+                        CLUSTER_NODE_IP=$ip
+                        break
+                    fi
+                done
+            done
+            /code/redis/redis-trib.rb check $CLUSTER_NODE_IP:6379 #| grep -E "S|M" | awk '{print $1"@"$2"@" $3}'
+            ;;
+        "node")
+            case $2 in
+                "-add")
+
+                    ;;
+                "-delete")
+                    ;;
+                *)
+                    ;;
+             esac
+            ;;
+        *)
+            echo "end"
+        ;;
+    esac
+fi
+
+time=$(date "+%Y-%m-%d")
 echo_info "************************************************************************************"
 echo_info "***********************                                   **************************"
 echo_info "***********************          RedisDocker start        **************************"
 echo_info "***********************          Author: Caiqyxyx         **************************"
-echo_info "***********************          Date: 2017-12-17         **************************"
+echo_info "***********************          Date: $time         **************************"
 echo_info "***********************                                   **************************"
 echo_info "************************************************************************************"
 
@@ -279,11 +329,6 @@ fi
 if test ! -e /data/redis/cluster ; then
 	mkdir -p /data/redis/cluster
 fi
-
-#if test -n $1 ; then
-#    echo $1
-#    exit 0
-#fi
 
 if [[ $MASTER == "true" ]] ; then
 	master_launcher
