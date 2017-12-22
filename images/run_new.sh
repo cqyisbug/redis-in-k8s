@@ -222,25 +222,37 @@ function cluster_ctrl_launcher(){
     while true; do
 
         IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
+        log_info "IP_Array: $IP_ARRAY"
         CLUSTER_CONFIG=""
         index=0
         for ip in $IP_ARRAY ;
         do
+            redis-cli -h ${ip} -p 6379 INFO
+            if test "$?" != "0" ; then
+                log_info "Connected to $ip failed ,executing break"
+                break
+            fi
             CLUSTER_CONFIG=${ip}":6379 "${CLUSTER_CONFIG}
+            log_info "Cluster config : $CLUSTER_CONFIG"
             let index++
         done
 
-        if test $index -eq 6 ; then
+        # TODO 这里的6以后需要放到环境变量里面去
+        log_warn "index : $index "
+        if test $index -ge 6 ; then
             log_info "Cluster controller start working...."
             yes yes | head -1 | /code/redis/redis-trib.rb create --replicas 1 $CLUSTER_CONFIG
+            log_info "Redis Cluster Created!"
             break
         else
+            log_info "sleep a while ... 1 sec"
             sleep 1
             continue
         fi
     done
 
     while true ; do
+        log_info " Cluster Controller State : Waiting ..."
         sleep 60
     done
 }
