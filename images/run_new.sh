@@ -21,15 +21,15 @@
 
 
 function echo_warn(){
-	echo -e "\033[33m$1\033[0m"
+    echo -e "\033[33m$1\033[0m"
 }
 
 function echo_info(){
-	echo -e "\033[36m$1\033[0m"
+    echo -e "\033[36m$1\033[0m"
 }
 
 function echo_error(){
-	echo -e "\033[31m$1\033[0m"
+    echo -e "\033[31m$1\033[0m"
 }
 
 function log_info(){
@@ -39,122 +39,122 @@ function log_info(){
 
 function log_warn(){
     time=$(date "+%Y-%m-%d %H:%M:%S")
-	echo -e "\033[33m$time  -  $1\033[0m"
+    echo -e "\033[33m$time  -  $1\033[0m"
 }
 
 function log_error(){
     time=$(date "+%Y-%m-%d %H:%M:%S")
-	echo -e "\033[31m$time  -  $1\033[0m"
+    echo -e "\033[31m$time  -  $1\033[0m"
 }
 
 function master_launcher(){
 
-	echo_info "************************************************************************************"
-	echo_info "***********************                                   "
-	echo_info "***********************   Master Port  : $MASTER_PORT     "
-	echo_info "***********************   Sentinel HOST: $SENTINEL_HOST   "
-	echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
-	echo_info "***********************                                   "
-	echo_info "************************************************************************************"
+    echo_info "************************************************************************************"
+    echo_info "***********************                                   "
+    echo_info "***********************   Master Port  : $MASTER_PORT     "
+    echo_info "***********************   Sentinel HOST: $SENTINEL_HOST   "
+    echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
+    echo_info "***********************                                   "
+    echo_info "************************************************************************************"
 
-	# 循环10次
-	guard=0
-	while test $guard -lt 10 ; do 
-		SENTINEL_IP=$(nslookup $SENTINEL_HOST | grep 'Address' | awk '{print $3}')
-		MASTER_IP=$(redis-cli -h $SENTINEL_IP -p $SENTINEL_PORT --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
-		if [[ -n $MASTER_IP && $MASTER_IP != "ERROR" ]] ; then
-			MASTER_IP="${MASTER_IP//\"}"
-			# 通过哨兵找到master，验证master是否正确
-			redis-cli -h $MASTER_IP -p $MASTER_PORT INFO
-			if test "$?" == "0" ; then
-				sed -i "s/%master-ip%/$MASTER_IP/" /config/redis/slave.conf
-				sed -i "s/%master-port%/$MASTER_PORT/" /config/redis/slave.conf
-				PERSISTENT_PATH="/data/redis/master"
-	            sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
-				THIS_IP=$(hostname -i)
-				echo "slave-announce-ip $THIS_IP" >> /config/redis/slave.conf
-				echo "slave-announce-port 6379" >> /config/redis/slave.conf
-				redis-server /config/redis/slave.conf --protected-mode no
-				break
-			else
-				log_error "Connecting to master failed . Waiting...."
-			fi
-		fi
-		let guard++
-		# 如果循环了多次，都没有找到，那么就放弃啦，再来一轮寻找
-		if test $guard -ge 10 ; then
-			log_info "Starting master ...."
-			redis-server /config/redis/master.conf --protected-mode no
-			break
-			# 新一轮开始啦。。。
-		    # guard=0
-		fi
-		sleep 2
-	done
+    # 循环10次
+    guard=0
+    while test $guard -lt 10 ; do
+        SENTINEL_IP=$(nslookup $SENTINEL_HOST | grep 'Address' | awk '{print $3}')
+        MASTER_IP=$(redis-cli -h $SENTINEL_IP -p $SENTINEL_PORT --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+        if [[ -n $MASTER_IP && $MASTER_IP != "ERROR" ]] ; then
+            MASTER_IP="${MASTER_IP//\"}"
+            # 通过哨兵找到master，验证master是否正确
+            redis-cli -h $MASTER_IP -p $MASTER_PORT INFO
+            if test "$?" == "0" ; then
+                sed -i "s/%master-ip%/$MASTER_IP/" /config/redis/slave.conf
+                sed -i "s/%master-port%/$MASTER_PORT/" /config/redis/slave.conf
+                PERSISTENT_PATH="/data/redis/master"
+                sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
+                THIS_IP=$(hostname -i)
+                echo "slave-announce-ip $THIS_IP" >> /config/redis/slave.conf
+                echo "slave-announce-port 6379" >> /config/redis/slave.conf
+                redis-server /config/redis/slave.conf --protected-mode no
+                break
+            else
+                log_error "Connecting to master failed . Waiting...."
+            fi
+        fi
+        let guard++
+        # 如果循环了多次，都没有找到，那么就放弃啦，再来一轮寻找
+        if test $guard -ge 10 ; then
+            log_info "Starting master ...."
+            redis-server /config/redis/master.conf --protected-mode no
+            break
+            # 新一轮开始啦。。。
+            # guard=0
+        fi
+        sleep 2
+    done
 }
 
 function slave_launcher(){
 
-  	echo_info "************************************************************************************"
-	echo_info "***********************                                   "
-	echo_info "***********************   Master Host  : $MASTER_HOST     "
-	echo_info "***********************   Master Port  : $MASTER_PORT     "
-	echo_info "***********************   Sentinel HOST: $SENTINEL_HOST   "
-	echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
-	echo_info "***********************                                   "
-	echo_info "************************************************************************************"
+    echo_info "************************************************************************************"
+    echo_info "***********************                                   "
+    echo_info "***********************   Master Host  : $MASTER_HOST     "
+    echo_info "***********************   Master Port  : $MASTER_PORT     "
+    echo_info "***********************   Sentinel HOST: $SENTINEL_HOST   "
+    echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
+    echo_info "***********************                                   "
+    echo_info "************************************************************************************"
 
-	while true; do
-		SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
-		MASTER_IP=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
-		if [[ -n ${MASTER_IP} ]] && [[ ${MASTER_IP} != "ERROR" ]] ; then
-			MASTER_IP="${MASTER_IP//\"}"
-		else
-		    sleep 2
-		    continue
-#			echo_info "Could not find sentinel nodes. direct to master node"
-#			MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
-		fi
+    while true; do
+        SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+        MASTER_IP=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
+        if [[ -n ${MASTER_IP} ]] && [[ ${MASTER_IP} != "ERROR" ]] ; then
+            MASTER_IP="${MASTER_IP//\"}"
+        else
+            sleep 2
+            continue
+#            echo_info "Could not find sentinel nodes. direct to master node"
+#            MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
+        fi
 
-		# 先从sentinel节点查找主节点信息，如果实在没有就直接从master节点找
-		redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
-		if [[ "$?" == "0" ]]; then
-			break
-		fi
+        # 先从sentinel节点查找主节点信息，如果实在没有就直接从master节点找
+        redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
+        if [[ "$?" == "0" ]]; then
+            break
+        fi
 
-		log_error "Connecting to master failed.  Waiting..."
-		sleep 5
-	done
-	
-	THIS_IP=$(hostname -i)  
+        log_error "Connecting to master failed.  Waiting..."
+        sleep 5
+    done
 
-	sed -i "s/%master-ip%/${MASTER_IP}/" /config/redis/slave.conf
-	sed -i "s/%master-port%/${MASTER_PORT}/" /config/redis/slave.conf
-	PERSISTENT_PATH="/data/redis/slave"
-	sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
+    THIS_IP=$(hostname -i)
 
-	echo "slave-announce-ip ${THIS_IP}" >> /config/redis/slave.conf
-	echo "slave-announce-port 6379" >> /config/redis/slave.conf
+    sed -i "s/%master-ip%/${MASTER_IP}/" /config/redis/slave.conf
+    sed -i "s/%master-port%/${MASTER_PORT}/" /config/redis/slave.conf
+    PERSISTENT_PATH="/data/redis/slave"
+    sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
 
-	redis-server  /config/redis/slave.conf --protected-mode no
+    echo "slave-announce-ip ${THIS_IP}" >> /config/redis/slave.conf
+    echo "slave-announce-port 6379" >> /config/redis/slave.conf
+
+    redis-server  /config/redis/slave.conf --protected-mode no
 }
 
 function sentinel_launcher(){
 
-	log_info "Starting sentinels..."
-	echo -e "\n"
+    log_info "Starting sentinels..."
+    echo -e "\n"
 
-	echo_info "************************************************************************************"
-	echo_info "***********************                                   "
-	echo_info "***********************   Master Host  : $MASTER_HOST     "
-	echo_info "***********************   Master Port  : $MASTER_PORT     "
-	echo_info "***********************   Sentinel SVC : $SENTINEL_SVC    "
-	echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
-	echo_info "***********************                                   "
-	echo_info "************************************************************************************"
+    echo_info "************************************************************************************"
+    echo_info "***********************                                   "
+    echo_info "***********************   Master Host  : $MASTER_HOST     "
+    echo_info "***********************   Master Port  : $MASTER_PORT     "
+    echo_info "***********************   Sentinel SVC : $SENTINEL_SVC    "
+    echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
+    echo_info "***********************                                   "
+    echo_info "************************************************************************************"
 
     MASTER_IP=""
-	while true; do
+    while true; do
         index=0
         while true; do
             let index++
@@ -187,37 +187,36 @@ function sentinel_launcher(){
 
     log_info "Master: $MASTER_IP"
 
-	sentinel_conf=/config/redis/sentinel.conf
- 
-	echo "port 26379" >> ${sentinel_conf}
-	echo "sentinel monitor mymaster ${MASTER_IP} ${MASTER_PORT} 2" >> ${sentinel_conf}
-	echo "sentinel down-after-milliseconds mymaster 30000" >> ${sentinel_conf}
-	echo "sentinel failover-timeout mymaster 180000" >> ${sentinel_conf}
-	echo "sentinel parallel-syncs mymaster 1" >> ${sentinel_conf}
-	echo "bind 0.0.0.0" >> ${sentinel_conf}
+    sentinel_conf=/config/redis/sentinel.conf
 
-  	redis-sentinel ${sentinel_conf} --protected-mode no
+    echo "port 26379" >> ${sentinel_conf}
+    echo "sentinel monitor mymaster ${MASTER_IP} ${MASTER_PORT} 2" >> ${sentinel_conf}
+    echo "sentinel down-after-milliseconds mymaster 30000" >> ${sentinel_conf}
+    echo "sentinel failover-timeout mymaster 180000" >> ${sentinel_conf}
+    echo "sentinel parallel-syncs mymaster 1" >> ${sentinel_conf}
+    echo "bind 0.0.0.0" >> ${sentinel_conf}
+
+      redis-sentinel ${sentinel_conf} --protected-mode no
 }
 
 function cluster_launcher(){
-	log_info "Starting cluster ..."
+    log_info "Starting cluster ..."
 
-	THIS_IP=$(hostname -i)
-	echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
-	echo "slave-announce-port 6379" >> /config/redis/cluster.conf
+    THIS_IP=$(hostname -i)
+    echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
+    echo "slave-announce-port 6379" >> /config/redis/cluster.conf
 
-	redis-server /config/redis/cluster.conf --protected-mode no
+    redis-server /config/redis/cluster.conf --protected-mode no
 }
 
 function cluster_ctrl_launcher(){
-	echo_info "************************************************************************************"
-	echo_info "***********************                                   "
-	echo_info "***********************   CLUSTER SVC  : $CLUSTER_SVC     "
-	echo_info "***********************                                   "
-	echo_info "************************************************************************************"
+    echo_info "************************************************************************************"
+    echo_info "***********************                                   "
+    echo_info "***********************   CLUSTER SVC  : $CLUSTER_SVC     "
+    echo_info "***********************                                   "
+    echo_info "************************************************************************************"
 
-
-	log_info "Config the cluster node..."
+    log_info "Config the cluster node..."
 
     # 安装redis的ruby环境
 #    gem install rdoc
@@ -259,22 +258,14 @@ function cluster_ctrl_launcher(){
     done
 
     while true ; do
-        log_info " Cluster Controller State : Waiting ..."
+        log_info "Cluster Controller State : Waiting ..."
         sleep 60
     done
 }
 
 
 if test $# -ne 0 ; then
-    time=$(date "+%Y-%m-%d")
-    echo_info "************************************************************************************"
-    echo_info "***********************                                   **************************"
-    echo_info "***********************          RedisScript start        **************************"
-    echo_info "***********************          Author: Caiqyxyx         **************************"
-    echo_info "***********************          Date: $time         **************************"
-    echo_info "***********************                                   **************************"
-    echo_info "************************************************************************************"
-
+# 开始自定义命令脚本 根据参数来进行一些查询
     case $1 in
         "nodes")
             while true;do
@@ -322,40 +313,40 @@ echo -e "\n\n\n\n"
 
 
 if test ! -e /data/redis/master ; then
-	mkdir -p /data/redis/master
+    mkdir -p /data/redis/master
 fi
 
 if test ! -e /data/redis/slave ; then
-	mkdir -p /data/redis/slave
+    mkdir -p /data/redis/slave
 fi
 
 if test ! -e /data/redis/cluster ; then
-	mkdir -p /data/redis/cluster
+    mkdir -p /data/redis/cluster
 fi
 
 if [[ $MASTER == "true" ]] ; then
-	master_launcher
-	exit 0
+    master_launcher
+    exit 0
 fi
 
 if [[ $SLAVE == "true" ]] ; then
-	slave_launcher
-	exit 0
+    slave_launcher
+    exit 0
 fi
 
 if [[ $SENTINEL == "true" ]] ; then
-	sentinel_launcher
-	exit 0
+    sentinel_launcher
+    exit 0
 fi
 
 if [[ $CLUSTER == "true" ]] ; then
-	cluster_launcher
-	exit 0
+    cluster_launcher
+    exit 0
 fi
 
 if [[ $CLUSTER_CTRL == "true" ]] ; then
-	cluster_ctrl_launcher
-	exit 0
+    cluster_ctrl_launcher
+    exit 0
 fi
 
 echo_info "************************************************************************************"
