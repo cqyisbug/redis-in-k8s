@@ -283,7 +283,7 @@ if test $# -ne 0 ; then
                     redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
                     if test "$?" == "0" ; then
                         CLUSTER_NODE_IP=$ip
-                        break
+                        break 2
                     fi
                 done
             done
