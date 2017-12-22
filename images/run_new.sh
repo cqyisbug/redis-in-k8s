@@ -220,8 +220,10 @@ function cluster_ctrl_launcher(){
 	log_info "Config the cluster node..."
 
     # 安装redis的ruby环境
-    gem install rdoc
-    gem install redis
+#    gem install rdoc
+#    gem install redis --version=4.0.1
+    gem install --local /redis-401.gem
+    gem install --local /rdoc-600.gem
 
     while true; do
 

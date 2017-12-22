@@ -65,6 +65,8 @@ COPY redis-slave.conf /config/redis/slave.conf
 COPY redis-cluster.conf /config/redis/cluster.conf
 RUN touch /config/redis/sentinel.conf
 COPY run_new.sh /code/redis/run.sh
+COPY redis-4.0.1.gem /redis-401.gem
+COPY rdoc-6.0.0.gem /rdoc-600.gem
 
 RUN chmod 777 /code/redis/run.sh
 
