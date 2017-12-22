@@ -32,7 +32,6 @@ function echo_error(){
 	echo -e "\033[31m$1\033[0m"
 }
 
-
 function log_info(){
     time=$(date "+%Y-%m-%d %H:%M:%S")
     echo -e "\033[36m$time  -  $1\033[0m"
@@ -83,7 +82,7 @@ function master_launcher(){
 		fi
 		let guard++
 		# 如果循环了多次，都没有找到，那么就放弃啦，再来一轮寻找
-		if test $guard -eq 10 ; then
+		if test $guard -ge 10 ; then
 			log_info "Starting master ...."
 			redis-server /config/redis/master.conf --protected-mode no
 			break
@@ -134,7 +133,6 @@ function slave_launcher(){
 	PERSISTENT_PATH="/data/redis/slave"
 	sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
 
-	
 	echo "slave-announce-ip ${THIS_IP}" >> /config/redis/slave.conf
 	echo "slave-announce-port 6379" >> /config/redis/slave.conf
 
@@ -155,25 +153,7 @@ function sentinel_launcher(){
 	echo_info "***********************                                   "
 	echo_info "************************************************************************************"
 
-#  	while true; do
-#    	SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
-#		# 不断根据哨兵节点的dns地址解析到ip地址，然后进行查询
-#		MASTER_IP=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
-#		if [[ -n ${MASTER_IP} &&  ${MASTER_IP} != "ERROR" ]] ; then
-#			MASTER_IP="${MASTER_IP//\"}"
-#		else
-#			echo_info "Could not find sentinel nodes. direct to master node..."
-#			MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
-#		fi
-#
-#		redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
-#		if test "$?" == "0" ; then
-#			break
-#		fi
-#		echo_warn "Connecting to master failed.  Waiting..."
-#		sleep 10
-#	done
-
+    MASTER_IP=""
 	while true; do
         index=0
         while true; do
@@ -191,16 +171,21 @@ function sentinel_launcher(){
                 fi
                 log_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
             done
-            if test $index -eq 10 ; then
+            if test $index -ge 10 ; then
+                log_info "Could not find the Sentinel ,Try to connenct the master directly!..."
                 MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
                 redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
                 if test "$?" == "0" ; then
                     break 2
+                else
+                    index=0
                 fi
-                log_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
+                log_error "Sentinel IP:${IP}  Master IP: ${MASTER_IP}  Connecting to master failed.  Waiting..."
             fi
         done
     done
+
+    log_info "Master: $MASTER_IP"
 
 	sentinel_conf=/config/redis/sentinel.conf
  
