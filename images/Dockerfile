@@ -51,9 +51,9 @@ RUN set -ex; \
     apk del .build-deps
 
 #  安装ruby环境  由于ruby的原因安装gem install redis的时候会稍微报点错,但是这个错误在docker里面会被捕捉到,所以放到shell 脚本里面去了
-#RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/
-#RUN gem install redis -V
-#RUN export PATH="$PATH:/usr/src/redis/src/"
+#  RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/
+#  RUN gem install redis -V
+#  RUN export PATH="$PATH:/usr/src/redis/src/"
 
 RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/;
 
@@ -71,5 +71,4 @@ COPY rdoc-6.0.0.gem /rdoc-600.gem
 RUN chmod 777 /code/redis/run.sh
 
 CMD [ "/code/redis/run.sh" ]
-#CMD ["pwd"]
 ENTRYPOINT [ "bash", "-c" ]

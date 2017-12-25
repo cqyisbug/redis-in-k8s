@@ -17,14 +17,13 @@ import java.util.concurrent.TimeUnit;
 public class JedisTest {
     public static void main(String[] args) {
         Set<HostAndPort> jedisClusterNodes = new HashSet<HostAndPort>();
-//Jedis Cluster will attempt to discover cluster nodes automatically
-        jedisClusterNodes.add(new HostAndPort("172.34.95.6", 6379));
-        jedisClusterNodes.add(new HostAndPort("172.34.79.7", 6379));
-        jedisClusterNodes.add(new HostAndPort("172.34.99.8", 6379));
-        jedisClusterNodes.add(new HostAndPort("172.34.95.8", 6379));
-        jedisClusterNodes.add(new HostAndPort("172.34.99.9", 6379));
-        jedisClusterNodes.add(new HostAndPort("172.34.79.11", 6379));
 
+        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-0.svc-redis-cluster", 6379));
+        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-1.svc-redis-cluster", 6379));
+        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-2.svc-redis-cluster", 6379));
+        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-3.svc-redis-cluster", 6379));
+        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-4.svc-redis-cluster", 6379));
+        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-5.svc-redis-cluster", 6379));
 
         JedisCluster jc = new JedisCluster(jedisClusterNodes);
 
@@ -33,7 +32,7 @@ public class JedisTest {
         Long s = new java.util.Date().getTime();
 
         for(int i = 0 ;i < 50 ;i++) {
-            t.submit(runnable);
+            t.execute(runnable);
         }
         t.shutdown();
         try {
@@ -53,14 +52,13 @@ public class JedisTest {
     public static class RunRedis implements  Runnable{
         JedisCluster jc  = null;
 
-
         public RunRedis(JedisCluster jc) {
             this.jc = jc;
         }
 
         @Override
         public void run() {
-            for (int i = 0; i < 20000; i++) {
+            for (int i = 0; i < 2000; i++) {
                 jc.set(RandomUtil.randomString(6), RandomUtil.randomString(6));
             }
         }
