@@ -16,6 +16,13 @@ Dockfile
 基于alpine3.6  redis的版本为4.0.1 
 修改时区为东八区
 
+shell 脚本 ^M 错误?
+---
+在打镜像之前先格式化下shell脚本
+step1:vi or vim
+step2: set ff=unix
+step3: 保存 
+
 
 这么多yaml?
 ---
