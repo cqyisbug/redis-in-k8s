@@ -206,6 +206,9 @@ function cluster_launcher(){
     echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
     echo "slave-announce-port 6379" >> /config/redis/cluster.conf
 
+    echo "cluster-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
+    echo "cluster-announce-port 6379" >> /config/redis/cluster.conf
+
     redis-server /config/redis/cluster.conf --protected-mode no
 }
 
