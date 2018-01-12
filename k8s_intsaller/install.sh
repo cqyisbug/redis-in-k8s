@@ -37,7 +37,7 @@ mv ./configt /etc/kubernetes/config
 echo "Initing flannel & docker ..."
 
 cp ./flanneld ./flanneldt
-set -i "s|%master%|$me|g" ./flanneldt
+sed -i "s|%master%|$me|g" ./flanneldt
 mv /etc/sysconfig/flanneld /etc/sysconfig/flanneld.bak
 mv ./flanneldt /etc/sysconfig/flanneld
 
