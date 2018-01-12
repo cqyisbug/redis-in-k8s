@@ -11,7 +11,7 @@ done
 
 echo "Removing Softwares..."
 
-rpm -qa | grep -E "etcd|docker|flannel|kubernetes"
+rpm -qa | grep -E "etcd|docker|flannel|kubernetes" | xargs rpm -e
 
 echo "Removing docker0 Bridge ..."
 
