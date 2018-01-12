@@ -9,14 +9,18 @@ for svc in $services ; do
 	systemctl disable $svc
 done
 
+
+
+
 echo "Removing Softwares..."
 
 rpm -qa | grep -E "etcd|docker|flannel|kubernetes" | xargs rpm -e
 
 echo "Removing docker0 Bridge ..."
-
+yum install -y bridge-utils
 ip link set dev docker0 down
-# brctl delbr docker0
+brctl delbr docker0
+rpm -qa | grep bridge-utils | xargs rpm -e
 
 echo "Removing files..."
 find / -name "*.rpmsave" | xargs rm -rf 

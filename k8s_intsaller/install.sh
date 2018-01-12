@@ -9,9 +9,10 @@ echo "Installing softwares..."
 yum install -y docker flannel etcd kubernetes *rhsm* 
 
 echo "Initing etcd...."
-sed -i "s/%master%/$me/" ./etcd.conf
+cp ./etcd.conf ./etcd.conft
+sed -i "s/%master%/$me/" ./etcd.conft
 mv /etc/etcd/etcd.conf /etc/etcd/etcd.conf.bak
-mv ./etcd.conf /etc/etcd/etcd.conf
+mv ./etcd.conft /etc/etcd/etcd.conf
 
 mkdir -p /var/lib/etcd/
 chown etcd:etcd /var/lib/etcd/
@@ -23,18 +24,22 @@ systemctl enable etcd
 etcdctl mk /coreos.com/network/config '{"Network":"172.17.0.0/16"}'
 
 echo "Initing k8s..."
-sed -i "s/%master%/$me/" ./apiserver
-sed -i "s/%master%/$me/" ./config
+cp ./apiserver ./apiservert
+cp ./config ./configt
+sed -i "s/%master%/$me/" ./apiservert
+sed -i "s/%master%/$me/" ./configt
+
 mv /etc/kubernetes/apiserver /etc/kubernetes/apiserver.bak
-mv ./apiserver /etc/kubernetes/apiserver
+mv ./apiservert /etc/kubernetes/apiserver
 mv /etc/kubernetes/config /etc/kubernetes/config.bak
-mv ./config /etc/kubernetes/config
+mv ./configt /etc/kubernetes/config
 
 echo "Initing flannel & docker ..."
 
-set -i "s/%master%/$me/" ./flanneld
+cp ./flanneld ./flanneldt
+set -i "s/%master%/$me/" ./flanneldt
 mv /etc/sysconfig/flanneld /etc/sysconfig/flanneld.bak
-mv ./flanneld /etc/sysconfig/flanneld
+mv ./flanneldt /etc/sysconfig/flanneld
 
 
 echo "Starting combining ..."
@@ -46,3 +51,4 @@ for s in etcd kube-apiserver kube-scheduler kube-controller-manager kubelet kube
         systemctl enable $s
         systemctl status $s | grep Active
 done
+
