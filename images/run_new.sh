@@ -246,10 +246,9 @@ function cluster_ctrl_launcher(){
             let index++
         done
 
-        # TODO 这里的6以后需要放到环境变量里面去
         log_info "index : $index "
         if test $index -ge $REDIS_CLUSTER_QUANTNUM ; then
-            log_info "Cluster controller start working...."
+            log_info "Cluster controller start building redis cluster...."
             yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTNUM $CLUSTER_CONFIG
             log_info "Redis Cluster Created!"
             break
