@@ -21,5 +21,9 @@ spec:
           value: "true"
         - name: CLUSTER_SVC
           value: "svc-redis-cluster"
+        - name: REDIS_CLUSTER_QUANTNUM
+          value: "6"
+        - name: REDIS_CLUSTER_SLAVE_QUANTNUM
+          value: "1"
         ports:
         - containerPort: 6379

@@ -196,7 +196,7 @@ function sentinel_launcher(){
     echo "sentinel parallel-syncs mymaster 1" >> ${sentinel_conf}
     echo "bind 0.0.0.0" >> ${sentinel_conf}
 
-      redis-sentinel ${sentinel_conf} --protected-mode no
+    redis-sentinel ${sentinel_conf} --protected-mode no
 }
 
 function cluster_launcher(){
@@ -247,21 +247,21 @@ function cluster_ctrl_launcher(){
         done
 
         # TODO 这里的6以后需要放到环境变量里面去
-        log_warn "index : $index "
-        if test $index -ge 6 ; then
+        log_info "index : $index "
+        if test $index -ge $REDIS_CLUSTER_QUANTNUM ; then
             log_info "Cluster controller start working...."
-            yes yes | head -1 | /code/redis/redis-trib.rb create --replicas 1 $CLUSTER_CONFIG
+            yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTNUM $CLUSTER_CONFIG
             log_info "Redis Cluster Created!"
             break
         else
-            log_info "sleep a while ... 1 sec"
+            log_info "sleep a while ... 5 sec"
             sleep 5
             continue
         fi
     done
 
     while true ; do
-        log_info "Cluster Controller State : Waiting ..."
+        log_info "Cluster Controller State : Running ..."
         sleep 60
     done
 }
