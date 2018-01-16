@@ -243,6 +243,7 @@ function cluster_ctrl_launcher(){
             fi
             CLUSTER_CONFIG=${ip}":6379 "${CLUSTER_CONFIG}
             log_info "Cluster config : $CLUSTER_CONFIG"
+            CLUSTER_NODE=${ip}
             let index++
         done
 
@@ -260,8 +261,9 @@ function cluster_ctrl_launcher(){
     done
 
     while true ; do
-        log_info "Cluster Controller State : Running ..."
-        sleep 60
+        log_info "Cluster Controller State : "
+        /code/redis/redis-trib.rb check $CLUSTER_NODE:6379
+        sleep 300
     done
 }
 

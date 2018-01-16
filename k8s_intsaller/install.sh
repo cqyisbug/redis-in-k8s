@@ -6,7 +6,7 @@ systemctl stop firewalld
 systemctl disable firewalld
 
 echo "Installing softwares..."
-yum install -y docker flannel etcd kubernetes *rhsm* 
+yum install -y docker flannel etcd kubernetes *rhsm*
 
 echo "Initing etcd...."
 cp ./etcd.conf ./etcd.conft
@@ -52,4 +52,3 @@ for s in etcd kube-apiserver kube-scheduler kube-controller-manager kubelet kube
         systemctl enable $s
         systemctl status $s 
 done
-
