@@ -216,6 +216,8 @@ function cluster_ctrl_launcher(){
     echo_info "************************************************************************************"
     echo_info "***********************                                   "
     echo_info "***********************   CLUSTER SVC  : $CLUSTER_SVC     "
+    echo_info "***********************   REDIS_CLUSTER_QUANTNUM : $REDIS_CLUSTER_QUANTNUM     "
+    echo_info "***********************   REDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_QUANTNUM     "
     echo_info "***********************                                   "
     echo_info "************************************************************************************"
 
@@ -251,17 +253,17 @@ function cluster_ctrl_launcher(){
         if test $index -ge $REDIS_CLUSTER_QUANTNUM ; then
             log_info "Cluster controller start building redis cluster...."
             yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTNUM $CLUSTER_CONFIG
-            log_info "Redis Cluster Created!"
+            log_info "Congratulations,Redis Cluster Completed!"
             break
         else
-            log_info "sleep a while ... 5 sec"
+            log_info "Waiting for the cluster node to start...sleep 5 seconds"
             sleep 5
             continue
         fi
     done
 
     while true ; do
-        log_info "Cluster Controller State : "
+        log_info "Redis Cluster State : "
         /code/redis/redis-trib.rb check $CLUSTER_NODE:6379
         sleep 300
     done
