@@ -1,5 +1,13 @@
-Redis in K8s
-===
+#Redis in K8s
+
+![kubernetes](k8s-logo.png) ![redis](redis-logo.jpg)
+
+-----
+
+
+
+-----
+
 
 ***目前发现2个问题： 1.K8S 集群外如何访问Redis，仅仅添加一个NodePort Service 远远不够   2.Cluster 模式情况下 可扩展性不够，增删节点做的不完善~***
 
