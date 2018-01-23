@@ -1,5 +1,28 @@
-Redis in K8s
-===
+#Redis in K8s
+
+
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/k8s-logo.png" width="100px" style="float:left" /><img src="https://github.com/marscqy/redis-in-k8s/blob/master/redis-logo.jpg" width="100px" style="margin-left:70px;float:left"/>
+
+
+-----
+
+   
+这是一个帮助你在Kubernetes(K8S)环境中搭建redis集群和哨兵模式的样例。  
+
+这里有三个文件夹目录和若干yaml配置文件，他们都是来帮助搭建redis环境的。(如果需要使用statefulset，请将你的k8s版本提升至1.5以上~)
+
+images 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。语法请参考搜索Docker。redis环境启动规则在run_new.sh 脚本中。
+```
+docker build -t $YOUR_TAG .
+```
+
+k8s_installer 是一个在单节点上安装kubernetes的脚本。使用这个脚本你首先得能连网，因为我没有把其中的rpm包全部下载下来。
+
+
+redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后续我会优化。
+
+-----
+
 
 ***目前发现2个问题： 1.K8S 集群外如何访问Redis，仅仅添加一个NodePort Service 远远不够   2.Cluster 模式情况下 可扩展性不够，增删节点做的不完善~***
 
