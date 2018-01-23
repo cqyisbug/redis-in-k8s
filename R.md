@@ -1,6 +1,8 @@
 #Redis in K8s
 
-![kubernetes](k8s-logo.png) ![redis](redis-logo.jpg)
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/k8s-logo.png" width="100px"/>
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/redis-logo.jpg" width="100px"/>
+
 
 -----
 
