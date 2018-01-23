@@ -11,7 +11,7 @@
 #           机制和slave一样
 #
 #
-#   2. 主从模式
+#   2. 主从集群模式
 #       1. CLUSTER = true
 #           启动一个多节点的redis服务,各个节点之间没有联系
 #       2. CLUSTER_CTRL = true
