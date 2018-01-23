@@ -1,4 +1,4 @@
-# Redis in K8s
+# Redis in Kubernetes(k8s)
 
 
 <img src="https://github.com/marscqy/redis-in-k8s/blob/master/k8s-logo.png" width="100px" style="float:left" /><img src="https://github.com/marscqy/redis-in-k8s/blob/master/redis-logo.jpg" width="100px" style="margin-left:70px;float:left"/>
@@ -23,45 +23,39 @@ redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后
 
 -----
 
+### 目前我所遇到的问题
+- kubernetes (k8s) 集群外如何访问 pod内的Redis？
+    - 添加 NodePort Service ？这是不够的，因为当你使用redis集群模式的时候，你set 或者 get 或者其他操作，可能会重定向到其他pod，这时你可能会注意到，我用run_new.sh 搭建的集群使用的时headless service，它会重定向到一个集群内的ip，这时候怎么办？    解决办法1.尝试使用其他网络组件  解决办法2.让pod使用node借点的网络配置。给pod添加以下两个属性即可。
+    ```
+            hostNetwork: true
+            dnsPolicy: ClusterFirstWithHostNet
+    ``` 
+- 当使用redis集群模式的时候，动态扩容问题？
+    - 这个问题纯粹是我自己懒了，没有继续往下写，接下来的一段时间内我会补上去。
 
-***目前发现2个问题： 1.K8S 集群外如何访问Redis，仅仅添加一个NodePort Service 远远不够   2.Cluster 模式情况下 可扩展性不够，增删节点做的不完善~***
+- 目前我在Dockerfile里面添加了ruby的环境
+    - 其实目前我个人觉得可以使用redis原生命令来对集群进行伸缩扩展比较好，也能符合日常运维需求了。
 
-问题1解决:方法1.自己写网络组件啦~,这个要求比较高,看方法2.
-         方法2.修改sf-redis-cluster.yaml,思路是使用宿主机网络.为pod添加以下两个属性.但是这里有局限性,就是你如果想搭建集群,就必须要有3个以上的K8S从节点 (redis 集群搭建条件:必须有3个或者三个以上的主节点.),因为使用了hostnetwork 之后,一个node 上只有一个redis-cluster 的pod.
-      ```
-      hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
-      ```
+-----
 
-redis 在K8S中的性能损耗:
-在我本地环境,每台虚拟机条件一样,4core 的cpu,7G的内存,在k8s中会损失24%的性能,主要性能损耗在网络组件上,所以网络组建推荐是calico.
+### 在K8S中的性能损耗
 
-环境
----
-k8s 高于 **1.5** 版本 因为要用statefulset 嘛
+使用  redis-cli -h $ip -p port --latency 命令可以看到网络延时，性能损耗主要在网络和持久化策略上~，这个需要靠各位同志自己优化了，如果我以后有好的方案，我会继续更新到这个地址的。
 
-1.5 环境下删除
-每个statefulset 下面的
-```
-        securityContext:
-          capabilities: {}
-          privileged: true
-```
-Dockfile 
----
-基于alpine3.6  redis的版本为4.0.1 
-修改时区为东八区
 
-shell 脚本 ^M 错误?
----
+-----
+
+
+#####  shell 脚本 ^M 错误?
+
 在打镜像之前先格式化下shell脚本
 step1:vi or vim
 step2: set ff=unix
 step3: 保存 
 
 
-这么多yaml?
----
+#####  yaml 解释一波~
+
 sf 表示statefulset
 svc 表示service
 
@@ -79,7 +73,10 @@ svc 表示service
     - svc-redis-cluster.yaml
     - svc-redis-cc.yaml
     
-    
+
+------
+
+
 如有疑问,请联系我:  
 email:cqyisbug@163.com  
 qq:377141708  
