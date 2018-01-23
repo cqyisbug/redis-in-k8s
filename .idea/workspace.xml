@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b8ed5f6e-3b8f-473c-85f1-f63ff3a9034c" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change beforePath="$PROJECT_DIR$/R.md" afterPath="$PROJECT_DIR$/R.md" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -61,8 +60,8 @@
         <entry file="file://$PROJECT_DIR$/R.md">
           <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
             <state split_layout="SPLIT">
-              <first_editor relative-caret-position="136">
-                <caret line="8" column="44" lean-forward="true" selection-start-line="8" selection-start-column="44" selection-end-line="8" selection-end-column="44" />
+              <first_editor relative-caret-position="170">
+                <caret line="10" column="5" lean-forward="true" selection-start-line="10" selection-start-column="5" selection-end-line="10" selection-end-column="5" />
                 <folding />
               </first_editor>
               <second_editor />
@@ -371,7 +370,7 @@
       <workItem from="1515986966964" duration="6593000" />
       <workItem from="1516083740777" duration="7891000" />
       <workItem from="1516711197159" duration="716000" />
-      <workItem from="1516713841483" duration="1497000" />
+      <workItem from="1516713841483" duration="1625000" />
     </task>
     <task id="LOCAL-00001" summary="[M] piVersion = &gt; apiVersion">
       <created>1513837335258</created>
@@ -531,7 +530,7 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="89257000" />
+    <option name="totallyTimeSpent" value="89385000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1382" height="744" extended-state="6" />
@@ -967,8 +966,8 @@
     <entry file="file://$PROJECT_DIR$/R.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
         <state split_layout="SPLIT">
-          <first_editor relative-caret-position="136">
-            <caret line="8" column="44" lean-forward="true" selection-start-line="8" selection-start-column="44" selection-end-line="8" selection-end-column="44" />
+          <first_editor relative-caret-position="170">
+            <caret line="10" column="5" lean-forward="true" selection-start-line="10" selection-start-column="5" selection-end-line="10" selection-end-column="5" />
             <folding />
           </first_editor>
           <second_editor />

@@ -1,7 +1,7 @@
 #Redis in K8s
 
-<img src="https://github.com/marscqy/redis-in-k8s/blob/master/k8s-logo.png" width="100px"/>
-<img src="https://github.com/marscqy/redis-in-k8s/blob/master/redis-logo.jpg" width="100px"/>
+
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/k8s-logo.png" width="100px" style="float:left" /><img src="https://github.com/marscqy/redis-in-k8s/blob/master/redis-logo.jpg" width="100px" style="margin-left:10px;float:left"/>
 
 
 -----
