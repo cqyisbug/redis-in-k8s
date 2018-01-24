@@ -40,7 +40,8 @@ redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后
 
 ### 在K8S中的性能损耗
 
-使用  redis-cli -h $ip -p port --latency 命令可以看到网络延时，性能损耗主要在网络和持久化策略上~，这个需要靠各位同志自己优化了，如果我以后有好的方案，我会继续更新到这个地址的。
+使用  redis-cli -h $ip -p port --latency 命令可以看到网络延时，性能损耗主要在网络和持久化策略上~  
+这个需要靠各位同志自己优化了，如果我以后有好的方案，我会继续更新到这个地址的。
 
 
 -----
@@ -48,10 +49,10 @@ redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后
 
 #####  shell 脚本 ^M 错误?
 
-在打镜像之前先格式化下shell脚本
-step1:vi or vim
-step2: set ff=unix
-step3: 保存 
+记得在打镜像之前先格式化下shell脚本  
+step1:vi or vim  
+step2: set ff=unix  
+step3: 保存   
 
 
 #####  yaml 解释一波~
