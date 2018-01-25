@@ -3,7 +3,7 @@
 mkdir -p /tmp/redis_install
 cd /tmp/redis_install
 
-REDIS_VERSION="4.0.6"
+REDIS_VERSION="4.0.7"
 
 curl -O http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz && curl -O http://www.rpmfind.net/linux/epel/7/x86_64/Packages/j/jemalloc-3.6.0-1.el7.x86_64.rpm
 

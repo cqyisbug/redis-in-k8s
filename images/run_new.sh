@@ -50,11 +50,11 @@ function log_error(){
 function master_launcher(){
 
     echo_info "************************************************************************************"
-    echo_info "***********************                                   "
-    echo_info "***********************   Master Port  : $MASTER_PORT     "
-    echo_info "***********************   Sentinel HOST: $SENTINEL_HOST   "
-    echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
-    echo_info "***********************                                   "
+    echo_info "\t\t                                "
+    echo_info "\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "\t\tSentinel HOST: $SENTINEL_HOST   "
+    echo_info "\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "\t\t                                "
     echo_info "************************************************************************************"
 
     # 循环10次
@@ -96,12 +96,12 @@ function master_launcher(){
 function slave_launcher(){
 
     echo_info "************************************************************************************"
-    echo_info "***********************                                   "
-    echo_info "***********************   Master Host  : $MASTER_HOST     "
-    echo_info "***********************   Master Port  : $MASTER_PORT     "
-    echo_info "***********************   Sentinel HOST: $SENTINEL_HOST   "
-    echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
-    echo_info "***********************                                   "
+    echo_info "\t\t                                "
+    echo_info "\t\tMaster Host  : $MASTER_HOST     "
+    echo_info "\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "\t\tSentinel HOST: $SENTINEL_HOST   "
+    echo_info "\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "\t\t                                "
     echo_info "************************************************************************************"
 
     while true; do
@@ -145,12 +145,12 @@ function sentinel_launcher(){
     echo -e "\n"
 
     echo_info "************************************************************************************"
-    echo_info "***********************                                   "
-    echo_info "***********************   Master Host  : $MASTER_HOST     "
-    echo_info "***********************   Master Port  : $MASTER_PORT     "
-    echo_info "***********************   Sentinel SVC : $SENTINEL_SVC    "
-    echo_info "***********************   Sentinel Port: $SENTINEL_PORT   "
-    echo_info "***********************                                   "
+    echo_info "\t\t                                "
+    echo_info "\t\tMaster Host  : $MASTER_HOST     "
+    echo_info "\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "\t\tSentinel SVC : $SENTINEL_SVC    "
+    echo_info "\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "\t\t                                "
     echo_info "************************************************************************************"
 
     MASTER_IP=""
@@ -214,11 +214,11 @@ function cluster_launcher(){
 
 function cluster_ctrl_launcher(){
     echo_info "************************************************************************************"
-    echo_info "***********************                                   "
-    echo_info "***********************   CLUSTER SVC  : $CLUSTER_SVC     "
-    echo_info "***********************   REDIS_CLUSTER_QUANTNUM : $REDIS_CLUSTER_QUANTNUM     "
-    echo_info "***********************   REDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_QUANTNUM     "
-    echo_info "***********************                                   "
+    echo_info "\t\t                                "
+    echo_info "\t\tCLUSTER SVC  : $CLUSTER_SVC     "
+    echo_info "\t\tREDIS_CLUSTER_QUANTNUM : $REDIS_CLUSTER_QUANTNUM     "
+    echo_info "\t\tREDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_QUANTNUM     "
+    echo_info "\t\t                                "
     echo_info "************************************************************************************"
 
     log_info "Config the cluster node..."
@@ -231,7 +231,6 @@ function cluster_ctrl_launcher(){
 
 
     while true; do
-
         IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
         log_info "IP_Array: $IP_ARRAY"
         CLUSTER_CONFIG=""
@@ -309,15 +308,14 @@ fi
 
 time=$(date "+%Y-%m-%d")
 echo_info "************************************************************************************"
-echo_info "***********************                                   **************************"
-echo_info "***********************          RedisDocker start        **************************"
-echo_info "***********************          Author: Caiqyxyx         **************************"
-echo_info "***********************          Date: $time         **************************"
-echo_info "***********************                                   **************************"
+echo_info "\t\t                             "
+echo_info "\t\t       RedisDocker start     "
+echo_info "\t\t       Author: Caiqyxyx      "
+echo_info "\t\t       Date: $time      "
+echo_info "\t\t                             "
 echo_info "************************************************************************************"
 
 echo -e "\n\n\n\n"
-
 
 if test ! -e /data/redis/master ; then
     mkdir -p /data/redis/master
@@ -357,7 +355,7 @@ if [[ $CLUSTER_CTRL == "true" ]] ; then
 fi
 
 echo_info "************************************************************************************"
-echo_info "***********************                                   **************************"
-echo_info "***********************          RedisDocker end          **************************"
-echo_info "***********************                                   **************************"
+echo_info "\t\t                             "
+echo_info "\t\t       RedisDocker end       "
+echo_info "\t\t                             "
 echo_info "************************************************************************************"
