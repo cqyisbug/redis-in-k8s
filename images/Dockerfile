@@ -6,8 +6,8 @@ FROM alpine:3.6
 
 RUN apk add --no-cache 'su-exec>=0.2' sed bash ruby
 
-ENV REDIS_VERSION 4.0.1
-ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-4.0.6.tar.gz
+ENV REDIS_VERSION 4.0.7
+ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz
 # ENV REDIS_DOWNLOAD_SHA 2049cd6ae9167f258705081a6ef23bb80b7eff9ff3d0d7481e89510f27457591
 ENV TIME_ZONE Asiz/Shanghai
 
