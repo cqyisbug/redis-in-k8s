@@ -11,11 +11,14 @@
 #           机制和slave一样
 #
 #
-#   2. 主从集群模式
+#   2. 集群(主从)模式
 #       1. CLUSTER = true
 #           启动一个多节点的redis服务,各个节点之间没有联系
 #       2. CLUSTER_CTRL = true
 #           将之前的节点拼接成一个集群
+#      集群模式的说明:如果想要让redis在K8S内的集群能让K8S集群外的程序访问
+#      你可能需要修改 cluster_ctrl_launcher 函数,同时需要修改sf-redis-cc.yaml 中的REDIS_CLUSTER_QUANTNUM 环境变量,改为你的nodes数量,这个数量必须要大于等于3
+#      
 #
 #==================================================================================================================
 
@@ -252,6 +255,8 @@ function cluster_ctrl_launcher(){
         if test $index -ge $REDIS_CLUSTER_QUANTNUM ; then
             log_info "Cluster controller start building redis cluster...."
             yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTNUM $CLUSTER_CONFIG
+            # 集群外访问
+            # yes yes | head -1 | /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
             log_info "Congratulations,Redis Cluster Completed!"
             break
         else
@@ -308,14 +313,14 @@ fi
 
 time=$(date "+%Y-%m-%d")
 echo_info "************************************************************************************"
-echo_info "\t\t                             "
-echo_info "\t\t       RedisDocker start     "
-echo_info "\t\t       Author: Caiqyxyx      "
-echo_info "\t\t       Date: $time      "
-echo_info "\t\t                             "
+echo_info "\t\t\t"
+echo_info "\t\t\t Redis-in-Kubernetes"
+echo_info "\t\t\t Author: caiqyxyx"
+echo_info "\t\t\t Github: https://github.com/marscqy/redis-in-k8s"
+echo_info "\t\t\t Start Date: $time"
+echo_info "\t\t\t"
 echo_info "************************************************************************************"
 
-echo -e "\n\n\n\n"
 
 if test ! -e /data/redis/master ; then
     mkdir -p /data/redis/master
@@ -355,7 +360,7 @@ if [[ $CLUSTER_CTRL == "true" ]] ; then
 fi
 
 echo_info "************************************************************************************"
-echo_info "\t\t                             "
-echo_info "\t\t       RedisDocker end       "
-echo_info "\t\t                             "
+echo_info "\t\t"
+echo_info "\t\t       RedisDocker"
+echo_info "\t\t"
 echo_info "************************************************************************************"
