@@ -47,7 +47,7 @@ echo "Starting combining ..."
 systemctl daemon-reload
 
 for s in etcd kube-apiserver kube-scheduler kube-controller-manager kubelet kube-proxy flanneld docker ; do
-		echo "**********       $s       ************"
+        echo "**********       $s       ************"
         systemctl restart $s
         systemctl enable $s
         systemctl status $s 

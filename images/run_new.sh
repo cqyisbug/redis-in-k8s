@@ -291,7 +291,8 @@ if test $# -ne 0 ; then
                     fi
                 done
             done
-            /code/redis/redis-trib.rb check $CLUSTER_NODE_IP:6379 #| grep -E "S|M" | awk '{print $1"@"$2"@" $3}'
+            redis-cli -h $CLUSTER_NODE_IP -P 6379 cluster nodes
+           # /code/redis/redis-trib.rb check $CLUSTER_NODE_IP:6379 #| grep -E "S|M" | awk '{print $1"@"$2"@" $3}'
             ;;
         "node")
             case $2 in

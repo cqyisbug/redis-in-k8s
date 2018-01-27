@@ -9,9 +9,9 @@
    
 这是一个帮助你在Kubernetes(K8S)环境中搭建redis集群和哨兵模式的样例。
 
-<font face="微软雅黑" color="#0099ff">看了Github上其他的k8s中redis的样例,要么根本没提集群模式,要么瞎写</font>  
+*** 看了Github上其他的k8s中redis的样例,要么根本没提集群模式,要么瞎写 ***
 
-这里有三个文件夹目录和若干yaml配置文件，他们都是来帮助搭建redis环境的。(如果需要使用statefulset，请将你的k8s版本提升至1.5以上~)
+这里有三个文件夹目录和若干yaml配置文件，他们都是来帮助搭建redis环境的。(如果需要使用statefulset，请将你的k8s版本提升至1.5以上~,还需要有dns组件)
 
 images 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。语法请参考搜索Docker。redis环境启动规则在run_new.sh 脚本中。
 ```
@@ -22,6 +22,7 @@ k8s_installer 是一个在单节点上安装kubernetes的脚本。使用这个�
 
 
 redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后续我会优化。
+
 
 -----
 
