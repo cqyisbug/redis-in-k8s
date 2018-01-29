@@ -197,7 +197,7 @@ function sentinel_launcher(){
     echo "sentinel down-after-milliseconds mymaster 30000" >> ${sentinel_conf}
     echo "sentinel failover-timeout mymaster 180000" >> ${sentinel_conf}
     echo "sentinel parallel-syncs mymaster 1" >> ${sentinel_conf}
-    echo "bind 0.0.0.0" >> ${sentinel_conf}
+    echo "bind $(hostname -i) 127.0.0.1" >> ${sentinel_conf}
 
     redis-sentinel ${sentinel_conf} --protected-mode no
 }
@@ -206,6 +206,9 @@ function cluster_launcher(){
     log_info "Starting cluster ..."
 
     THIS_IP=$(hostname -i)
+    echo "port 6379" >> /config/redis/cluster.conf
+    echo "bind $(hostname -i) 127.0.0.1 " >> /config/redis/cluster.conf
+
     echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
     echo "slave-announce-port 6379" >> /config/redis/cluster.conf
 
@@ -260,7 +263,7 @@ function cluster_ctrl_launcher(){
             log_info "Congratulations,Redis Cluster Completed!"
             break
         else
-            log_info "Waiting for the cluster node to start...sleep 5 seconds"
+            log_info "Waiting for the cluster node to start...Sleep 5 secs"
             sleep 5
             continue
         fi
