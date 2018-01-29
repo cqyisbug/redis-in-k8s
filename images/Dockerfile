@@ -44,6 +44,8 @@ RUN set -ex; \
 	\
 	mkdir -p /code/redis ;\
 	\
+	mv /usr/src/redis/src/redis-trib.rb /code/redis/redis-trib.rb ;\
+	\
 	rm -r /usr/src/redis; \
 	\
     apk del .build-deps
@@ -65,7 +67,6 @@ RUN touch /config/redis/sentinel.conf
 COPY run_new.sh /code/redis/run.sh
 COPY redis-4.0.1.gem /redis-401.gem
 COPY rdoc-6.0.0.gem /rdoc-600.gem
-COPY redis-trib.rb /code/redis/redis-trib.rb 
 
 RUN chmod 777 /code/redis/run.sh
 
