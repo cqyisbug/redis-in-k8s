@@ -9,7 +9,7 @@
    
 这是一个帮助你在Kubernetes(K8S)环境中搭建redis集群和哨兵模式的样例。
 
-*** 看了Github上其他的k8s中redis的样例,要么根本没提集群模式,要么瞎写 ***
+>>> 看了Github上其他的k8s中redis的样例,要么根本没提集群模式,要么瞎写 
 
 这里有三个文件夹目录和若干yaml配置文件，他们都是来帮助搭建redis环境的。(如果需要使用statefulset，请将你的k8s版本提升至1.5以上~,还需要有dns组件)
 
@@ -35,7 +35,8 @@ redis-trib.rb add-node --auto new_host:new_port existing_host:existing_port
 ```
 <img src="https://github.com/marscqy/redis-in-k8s/blob/master/add-node.png" width="643px" height="511px" style="float:left" />
   
-
+  
+  
 
 ```
 redis-trib.rb info --detail host:port
