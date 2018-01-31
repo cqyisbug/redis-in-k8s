@@ -33,7 +33,7 @@ redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后
 ```
 redis-trib.rb add-node --auto new_host:new_port existing_host:existing_port
 ```
-<img src="https://github.com/marscqy/redis-in-k8s/blob/master/add-node.png" width="643px" height="511px"style="float:left" />
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/add-node.png" width="643px" height="511px" style="float:left" />
   
 
 
