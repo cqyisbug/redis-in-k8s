@@ -1511,16 +1511,24 @@ class RedisTrib
         xputs "[OK] New node added correctly."
 
         if opt['auto'] and not opt['slave']
-            xputs "[WARNING] move slots is a gangerious operate,please don't interrupt it."
-            xputs ">>> Automatically reshard slots to the new node"
-            opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
-
-            check_cluster
-
-            if @errors.length != 0
-                puts "*** Please fix your cluster problems before resharding"
-                exit 1
+            for i in 1..10
+                check_cluster
+                if @errors.length != 0
+                    @errors.clear
+                    if i == 10
+                        puts "*** Please fix your cluster problems before resharding"
+                        exit 1
+                    else
+                        sleep(2)
+                    end
+                else
+                    break
+                end
             end
+
+            xputs "[WARNING] Moving slots is a dangerious operation,please don't interrupt it."
+            xputs ">>> Performing automatically resharding slots to the new node"
+            opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
 
             masters = 0;
             @nodes.each {|n|
