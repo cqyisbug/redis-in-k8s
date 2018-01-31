@@ -28,7 +28,6 @@ RUN set -ex; \
 	# 设置时区
     cp -r -f /usr/share/zoneinfo/Hongkong /etc/localtime ; \
     echo -ne "Alpine Linux 3.6 image. (`uname -rsv`)\n" >> /root/.built ;\
-
 	wget -O redis.tar.gz "$REDIS_DOWNLOAD_URL"; \
 	# echo "$REDIS_DOWNLOAD_SHA *redis.tar.gz" | sha256sum -c -; \
 	mkdir -p /usr/src/redis; \
@@ -44,7 +43,7 @@ RUN set -ex; \
 	\
 	mkdir -p /code/redis ;\
 	\
-	mv /usr/src/redis/src/redis-trib.rb /code/redis/redis-trib.rb ;\
+#	mv /usr/src/redis/src/redis-trib.rb /code/redis/redis-trib.rb ;\
 	\
 	rm -r /usr/src/redis; \
 	\
@@ -67,6 +66,7 @@ RUN touch /config/redis/sentinel.conf
 COPY run_new.sh /code/redis/run.sh
 COPY redis-4.0.1.gem /redis-401.gem
 COPY rdoc-6.0.0.gem /rdoc-600.gem
+COPY redis-trib.rb /code/redis/redis-trib.rb
 
 RUN chmod 777 /code/redis/run.sh
 

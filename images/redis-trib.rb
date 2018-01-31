@@ -23,7 +23,6 @@
 
 require 'rubygems'
 require 'redis'
-require 'json'
 
 ClusterHashSlots = 16384
 MigrateDefaultTimeout = 60000
@@ -363,36 +362,11 @@ class RedisTrib
     end
 
     def show_cluster_info(opt)
-        if opt["json"]
-            json_arr = []
-            @nodes.each {|n|
-                tmp_o = {}
-                tmp_o[:host] = n.info[:host]
-                tmp_o[:port] = n.info[:port]
-                tmp_o[:nodeId] = n.info[:name]
-                tmp_o[:keys] = n.r.dbsize
-                tmp_o[:slots] = n.slots.length
-                tmp_o[:slaves] = n.info[:replicas]
-                tmp_o[:replicas] = n.info[:replicas].length
-                tmp_o[:replicate] = n.info[:replicate]
-                if n.has_flag?("master")
-                    tmp_o[:isMaster] = true
-                else
-                    tmp_o[:isMaster] = false
-                end
-                json_arr << tmp_o
-            }
-            puts json_arr.to_json
-        elsif opt["all"]
+        if opt["detail"]
             masters = 0
             keys = 0
             @nodes.each {|n|
-                if n.has_flag?("master")
-                    puts "#{n} (#{n.info[:name][0...8]}...) -> #{n.r.dbsize} keys | #{n.slots.length} slots | " +
-                             "#{n.info[:replicas].length} slaves."
-                    masters += 1
-                    keys += n.r.dbsize
-                end
+                show_node_detail(n)
             }
             xputs "[OK] #{keys} keys in #{masters} masters."
             keys_per_slot = sprintf("%.2f", keys / 16384.0)
@@ -948,6 +922,17 @@ class RedisTrib
         @nodes.each {|n|
             xputs n.info_string
         }
+    end
+
+    def show_node_detail(n)
+        if n.has_flag?("master")
+            puts "#{n} (#{n.info[:name]}) -> #{n.r.dbsize} keys | #{n.slots.length} slots | " +
+                     "#{n.info[:replicas].length} slaves."
+            n.info[:replicas].each {|repl|
+                puts "--- #{repl} (#{repl.info[:name]})"
+            }
+            puts ""
+        end
     end
 
     # Redis Cluster config epoch collision resolution code is able to eventually
@@ -1524,6 +1509,62 @@ class RedisTrib
             new.r.cluster("replicate", master.info[:name])
         end
         xputs "[OK] New node added correctly."
+
+        if opt['auto'] and not opt['slave']
+            xputs "[WARNING] move slots is a gangerious operate,please don't interrupt it."
+            xputs ">>> Automatically reshard slots to the new node"
+            opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
+
+            check_cluster
+
+            if @errors.length != 0
+                puts "*** Please fix your cluster problems before resharding"
+                exit 1
+            end
+
+            masters = 0;
+            @nodes.each {|n|
+                if n.has_flag?("master")
+                    masters += 1
+                end
+            }
+            numslots = ClusterHashSlots / (masters)
+
+            # Set the target instance
+            target = new
+
+            # Set the source instances
+            sources = []
+            @nodes.each {|n|
+                next if n.info[:name] == target.info[:name]
+                next if n.has_flag?("slave")
+                sources << n
+            }
+
+            # Check if the destination node is the same of any source nodes.
+            if sources.index(target)
+                xputs "*** Target node is also listed among the source nodes!"
+                exit 1
+            end
+
+            puts "\nReady to move #{numslots} slots."
+            puts "  Source nodes:"
+            sources.each {|s| puts "    " + s.info_string}
+            puts "  Destination node:"
+            puts "    #{target.info_string}"
+            reshard_table = compute_reshard_table(sources, numslots)
+            puts "  Resharding plan:"
+            show_reshard_table(reshard_table)
+
+            reshard_table.each {|e|
+                move_slot(e[:source], target, e[:slot],
+                          :dots => true,
+                          :pipeline => opt['pipeline'])
+            }
+
+            xputs "[OK] slots resharded."
+            check_cluster
+        end
     end
 
     def delnode_cluster_cmd(argv, opt)
@@ -1828,7 +1869,7 @@ COMMANDS = {
 
 ALLOWED_OPTIONS = {
     "create" => {"replicas" => true},
-    "info" => {"json" => false, "all" => false},
+    "info" => {"detail" => false},
     "add-node" => {"slave" => false, "master-id" => true, "auto" => false},
     "import" => {"from" => :required, "copy" => false, "replace" => false},
     "reshard" => {"from" => true, "to" => true, "slots" => true, "yes" => false, "timeout" => true, "pipeline" => true},

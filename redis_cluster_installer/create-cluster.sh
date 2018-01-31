@@ -14,7 +14,7 @@ cd redis-$REDIS_VERSION
 make MALLOC=$(which jemalloc.sh)
 make install 
 
-cd tmp
+cd /tmp
 
 DIR_ARR=(7000 7001 7002 7003 7004 7005)
 
@@ -38,4 +38,5 @@ for f in ${DIR_ARR[*]} ; do
 done 
 
 cd /tmp/redis_install/redis-$REDIS_VERSION/src
-yes yes |head -1 |./redis-trib.rb create --replicas 1 $CLUSTER_COFIG
+cp /tmp/redis_install/redis-$REDIS_VERSION/src/redis-trib.rb /usr/local/bin/redis-trib.rb
+yes yes |head -1 |redis-trib.rb create --replicas 1 $CLUSTER_COFIG
