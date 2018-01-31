@@ -23,6 +23,25 @@ k8s_installer 是一个在单节点上安装kubernetes的脚本。使用这个�
 
 redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后续我会优化。
 
+-----
+
+### 对redis-trib.rb 的修改 2018-01-31
+
+>> 为 add-node 添加一个auto 命令,使其能在添加完节点之后自动迁移节点
+>> 为 info 添加一个 detail 命令,使其能够输出完整的集群信息
+
+```
+redis-trib.rb add-node --auto new_host:new_port existing_host:existing_port
+```
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/add-node.png" width="643px" height="511px"style="float:left" />
+  
+
+
+```
+redis-trib.rb info --detail host:port
+```  
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/info.jpg" width="787px" height="234px" style="float:left" />
+
 
 -----
 
@@ -46,9 +65,7 @@ redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后
 使用  redis-cli -h $ip -p port --latency 命令可以看到网络延时，性能损耗主要在网络和持久化策略上~  
 这个需要靠各位同志自己优化了，如果我以后有好的方案，我会继续更新到这个地址的。
 
-
 -----
-
 
 #####  shell 脚本 ^M 错误?
 
@@ -77,7 +94,6 @@ svc 表示service
     - svc-redis-cluster.yaml
     - svc-redis-cc.yaml
     
-
 ------
 
 
