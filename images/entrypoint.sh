@@ -290,15 +290,67 @@ function cluster_ctrl_launcher(){
     while true ; do
         log_info ">>> Performing Check Redis Cluster Pod Replicas"
         NEW_REPLICAS=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.replicas\"")
-        log_info "Current Pod Replicas:$NEW_REPLICAS"
+        NODES=$(curl ${API_SERVER_ADDR}"/api/v1/nodes | jq \".items | length\"")
+        HOST_NETWORK=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.template.spec.hostNetwork\"" )
+        log_info "Current Pod Replicas : $NEW_REPLICAS"
+        log_info "Current Nodes QuantNum : $NODES"
+
+        #  这里还要判断 NEW_REPLICAS NODES 和 REPLICAS 的关系
+        #  如果采用了hostnetwork 的话,pod的数量不能大于 nodes的数量,所以 NEW_REPLICAS > NODES => NEW_REPLICAS=NODES
+
+        if test $NEW_REPLICAS -gt $NODES ; then
+            if test $HOST_NETWORK == "true" ; then
+                log_warn "[WARNNING] When you use host network,make sure that the number of pod is less than node"
+                NEW_REPLICAS=$NODES
+            fi
+        fi
+
         if test $NEW_REPLICAS -ge $REPLICAS ;then
-            if test $NEW_REPLICAS -eq $replicas ;then
+            if test $NEW_REPLICAS -eq $REPLICAS ;then
                 log_info ">>> Performing Check Redis Cluster..."
                 /code/redis/redis-trib.rb check $CLUSTER_NODE:6379
                 sleep 120
             else
                 log_info ">>> Performing Add Node To The Redis Cluster"
-                "take a break..."
+                while true ; do
+                    NEW_IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
+                    log_info "Ready Pod IP : $NEW_IP_ARRAY"
+                    new_index=0
+                    for ip in $NEW_IP_ARRAY ;
+                    do
+                        redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
+                        if test "$?" != "0" ; then
+                            log_error "[ERROR] Connected to $ip failed ,execute break"
+                            break
+                        fi
+                        CLUSTER_CONFIG=${ip}":6379 "${CLUSTER_CONFIG}
+                        log_info "Cluster config : $CLUSTER_CONFIG"
+                        CLUSTER_NODE=${ip}
+                        let new_index++
+                    done
+
+                    log_info "index : $new_index "
+
+                    if test $new_index -ge $NEW_REPLICAS ; then
+                        log_info ">>> Performing Add New Node To The Existed Redis Cluster..."
+                        
+                        #这里要提出新的ip,
+                        for ip in $IP_ARRAY ; do
+                            sed -i "s/$ip/\"\"/" $NEW_IP_ARRAY
+                        done
+
+                        for ip in $NEW_IP_ARRAY ; do 
+                            /code/redis/redis-trib.rb add-node --auto $ip:6379
+                        done
+
+                        log_info "[OK] Congratulations,Redis Cluster Completed!"
+                        break
+                    else
+                        log_info "Waiting For All Pod To Be Ready! Sleep 5 secs..."
+                        sleep 5
+                        continue
+                    fi
+                done
             fi
         else
             log_warn "[WARNNING] Sorry,We Dont Support The Delete Operation."
