@@ -23,6 +23,8 @@ RUN set -ex; \
 		tzdata \
 		tree \
 		curl \
+		# jq 是用来解析json 的,当然也可以用 grep 和 awk 配合来提取值
+		jq \
 	; \
 	\
 	# 设置时区
@@ -63,12 +65,12 @@ COPY redis-master.conf /config/redis/master.conf
 COPY redis-slave.conf /config/redis/slave.conf
 COPY redis-cluster.conf /config/redis/cluster.conf
 RUN touch /config/redis/sentinel.conf
-COPY run_new.sh /code/redis/run.sh
+COPY entrypoint.sh /code/redis/entrypoint.sh
 COPY redis-4.0.1.gem /redis-401.gem
 COPY rdoc-6.0.0.gem /rdoc-600.gem
 COPY redis-trib.rb /code/redis/redis-trib.rb
 
-RUN chmod 777 /code/redis/run.sh
+RUN chmod 777 /code/redis/entrypoint.sh
 
 CMD [ "/code/redis/run.sh" ]
 ENTRYPOINT [ "bash", "-c" ]

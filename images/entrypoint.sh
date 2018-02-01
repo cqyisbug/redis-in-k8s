@@ -42,12 +42,12 @@ function log_info(){
 
 function log_warn(){
     time=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "\033[33m$time  -  $1\033[0m"
+    echo -e "\033[33m$time  - [WARNNING] $1\033[0m"
 }
 
 function log_error(){
     time=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "\033[31m$time  -  $1\033[0m"
+    echo -e "\033[31m$time  - [ERROR] $1\033[0m"
 }
 
 function master_launcher(){
@@ -89,8 +89,6 @@ function master_launcher(){
             log_info "Starting master ...."
             redis-server /config/redis/master.conf --protected-mode no
             break
-            # 新一轮开始啦。。。
-            # guard=0
         fi
         sleep 2
     done
@@ -222,12 +220,24 @@ function cluster_ctrl_launcher(){
     echo_info "************************************************************************************"
     echo_info "\t\t                                "
     echo_info "\t\tCLUSTER SVC  : $CLUSTER_SVC     "
-    echo_info "\t\tREDIS_CLUSTER_QUANTNUM : $REDIS_CLUSTER_QUANTNUM     "
-    echo_info "\t\tREDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_QUANTNUM     "
+    echo_info "\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
+    echo_info "\t\tREDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_REPLICAS     "
     echo_info "\t\t                                "
     echo_info "************************************************************************************"
 
-    log_info "Config the cluster node..."
+    log_info ">>> Performing Cluster Config Check"
+    REPLICAS=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.replicas\"")
+    # 
+    let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3
+    if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
+        log_error "[ERROR] We nedd more pods.please reset the \"replicas\" in sf-redis-cluster.yaml and recreate the statefulset"
+        log_error "[IMPORTANT] => pod_replicas >= slave_replicas * 3 "
+        exit 1
+    else
+        log_info "[OK] Cluster Config OK..."
+    fi
+
+    log_info ">>> Perfoming Build Redis Cluster..."
 
     # 安装redis的ruby环境
 #    gem install rdoc

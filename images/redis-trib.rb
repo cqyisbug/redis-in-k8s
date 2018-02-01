@@ -1526,7 +1526,7 @@ class RedisTrib
                 end
             end
 
-            xputs "[WARNING] Moving slots is a dangerious operation,please don't interrupt it."
+            xputs "\n[WARNING] Moving slots is a dangerious operation,please don't interrupt it."
             xputs ">>> Performing automatically resharding slots to the new node"
             opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
 

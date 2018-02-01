@@ -71,7 +71,7 @@ redis-trib.rb info --detail host:port
 #####  shell 脚本 ^M 错误?
 
 记得在打镜像之前先格式化下shell脚本  
-step1:vi or vim  
+step1: vi or vim  
 step2: set ff=unix  
 step3: 保存   
 
@@ -99,6 +99,6 @@ svc 表示service
 
 
 如有疑问,请联系我:  
-email:cqyisbug@163.com  
-qq:377141708  
-wechat:antscqy  
+- email: cqyisbug@163.com  
+- qq: 377141708  
+- wechat: antscqy  
