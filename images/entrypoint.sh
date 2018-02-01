@@ -309,7 +309,7 @@ function cluster_ctrl_launcher(){
             if test $NEW_REPLICAS -eq $REPLICAS ;then
                 log_info ">>> Performing Check Redis Cluster..."
                 /code/redis/redis-trib.rb check $CLUSTER_NODE:6379
-                sleep 120
+                sleep 5
             else
                 log_info ">>> Performing Add Node To The Redis Cluster"
                 while true ; do
@@ -323,6 +323,7 @@ function cluster_ctrl_launcher(){
                             log_error " Connected to $ip failed ,execute break"
                             break
                         fi
+                        CLUSTER_NODE=${ip}
                         let new_index++
                     done
 
@@ -340,10 +341,12 @@ function cluster_ctrl_launcher(){
                                 fi
                             done
                             
-                            if $EXISTS -eq 0 ;then 
-                                /code/redis/redis-trib.rb add-node --auto $ip_a:6379
+                            if  test $EXISTS -eq 0 ; then 
+                                /code/redis/redis-trib.rb add-node --auto $ip_a:6379  $CLUSTER_NODE:6379
                             fi
                         done
+
+                        REPLICAS=$NEW_REPLICAS
 
                         log_info "[OK] Congratulations,Redis Cluster Completed!"
                         break
