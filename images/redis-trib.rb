@@ -23,6 +23,7 @@
 
 require 'rubygems'
 require 'redis'
+require 'dir'
 
 ClusterHashSlots = 16384
 MigrateDefaultTimeout = 60000
@@ -1508,71 +1509,66 @@ class RedisTrib
             xputs ">>> Configure node as replica of #{master}."
             new.r.cluster("replicate", master.info[:name])
         end
-        xputs "[OK] New node added correctly."
+
 
         if opt['auto'] and not opt['slave']
-            for i in 1..10
-                check_cluster
-                if @errors.length != 0
-                    @errors.clear
-                    if i == 10
-                        puts "*** Please fix your cluster problems before resharding"
-                        exit 1
-                    else
-                        sleep(2)
-                    end
-                else
-                    break
-                end
-            end
+
+            wait_cluster_join
 
             xputs "\n[WARNING] Moving slots is a dangerious operation,please don't interrupt it."
             xputs ">>> Performing automatically resharding slots to the new node"
             opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
 
-            masters = 0;
-            @nodes.each {|n|
-                if n.has_flag?("master")
-                    masters += 1
+            master = get_master_with_least_replicas
+            if master.info[:replicas].length > 0
+                masters = 0;
+                @nodes.each {|n|
+                    if n.has_flag?("master")
+                        masters += 1
+                    end
+                }
+                numslots = ClusterHashSlots / (masters)
+
+                # Set the target instance
+                target = new
+
+                # Set the source instances
+                sources = []
+                @nodes.each {|n|
+                    next if n.info[:name] == target.info[:name]
+                    next if n.has_flag?("slave")
+                    sources << n
+                }
+
+                # Check if the destination node is the same of any source nodes.
+                if sources.index(target)
+                    xputs "*** Target node is also listed among the source nodes!"
+                    exit 1
                 end
-            }
-            numslots = ClusterHashSlots / (masters)
 
-            # Set the target instance
-            target = new
+                puts "\nReady to move #{numslots} slots."
+                puts "  Source nodes:"
+                sources.each {|s| puts "    " + s.info_string}
+                puts "  Destination node:"
+                puts "    #{target.info_string}"
+                reshard_table = compute_reshard_table(sources, numslots)
+                puts "  Resharding plan:"
+                show_reshard_table(reshard_table)
 
-            # Set the source instances
-            sources = []
-            @nodes.each {|n|
-                next if n.info[:name] == target.info[:name]
-                next if n.has_flag?("slave")
-                sources << n
-            }
+                reshard_table.each {|e|
+                    move_slot(e[:source], target, e[:slot],
+                              :dots => true,
+                              :pipeline => opt['pipeline'])
+                }
 
-            # Check if the destination node is the same of any source nodes.
-            if sources.index(target)
-                xputs "*** Target node is also listed among the source nodes!"
-                exit 1
+                xputs "[OK] slots reshard finished correctly."
+            else
+                xputs ">>> Configure node as replica of #{master}."
+                new.r.cluster("replicate", master.info[:name])
             end
-
-            puts "\nReady to move #{numslots} slots."
-            puts "  Source nodes:"
-            sources.each {|s| puts "    " + s.info_string}
-            puts "  Destination node:"
-            puts "    #{target.info_string}"
-            reshard_table = compute_reshard_table(sources, numslots)
-            puts "  Resharding plan:"
-            show_reshard_table(reshard_table)
-
-            reshard_table.each {|e|
-                move_slot(e[:source], target, e[:slot],
-                          :dots => true,
-                          :pipeline => opt['pipeline'])
-            }
-
-            xputs "[OK] slots resharded."
-            check_cluster
         end
+
+        xputs "[OK] New node added correctly."
     end
 
     def delnode_cluster_cmd(argv, opt)
@@ -1584,7 +1580,6 @@ class RedisTrib
 
         # Check if the node exists and is not empty
         node = get_node_by_name(id)
-
         if !node
             xputs "[ERR] No such node ID #{id}"
             exit 1

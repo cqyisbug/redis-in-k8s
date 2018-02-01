@@ -243,7 +243,7 @@ function cluster_ctrl_launcher(){
     #
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
-        log_error "[ERROR] We nedd more pods.please reset the \"replicas\" in sf-redis-cluster.yaml and recreate the statefulset"
+        log_error "[ERROR] We Need More Pods, Please Reset The \"replicas\" In  sf-redis-cluster.yaml And Recreate The StatefulSet"
         log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
         exit 1
     else
