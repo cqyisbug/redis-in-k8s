@@ -16,8 +16,9 @@
 #           启动一个多节点的redis服务,各个节点之间没有联系
 #       2. CLUSTER_CTRL = true
 #           将之前的节点拼接成一个集群
-#      集群模式的说明:如果想要让redis在K8S内的集群能让K8S集群外的程序访问
-#      你可能需要修改 cluster_ctrl_launcher 函数,同时需要修改sf-redis-cc.yaml 中的REDIS_CLUSTER_QUANTNUM 环境变量,改为你的nodes数量,这个数量必须要大于等于3
+#      集群模式的说明:
+#      集群普通节点的pod数量 必须 大于等于 (集群每个主节点的副本数 * 3)
+#      如果想让集群外访问,只需要在yaml里面配置就可以了,不需要再来修改 shell 脚本
 #      
 #
 #==================================================================================================================
@@ -50,6 +51,8 @@ function log_error(){
     echo -e "\033[31m$time  - [ERROR] $1\033[0m"
 }
 
+
+# 哨兵模式 master节点启动流程代码
 function master_launcher(){
 
     echo_info "************************************************************************************"
@@ -94,6 +97,7 @@ function master_launcher(){
     done
 }
 
+# 哨兵模式 slave节点启动流程代码
 function slave_launcher(){
 
     echo_info "************************************************************************************"
@@ -140,6 +144,7 @@ function slave_launcher(){
     redis-server  /config/redis/slave.conf --protected-mode no
 }
 
+# 哨兵模式 哨兵节点启动流程代码
 function sentinel_launcher(){
 
     log_info "Starting sentinels..."
@@ -200,6 +205,7 @@ function sentinel_launcher(){
     redis-sentinel ${sentinel_conf} --protected-mode no
 }
 
+# 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
     log_info "Starting cluster ..."
 
@@ -216,10 +222,11 @@ function cluster_launcher(){
     redis-server /config/redis/cluster.conf --protected-mode no
 }
 
+# 集群模式 集群配置节点启动流程代码
 function cluster_ctrl_launcher(){
     echo_info "************************************************************************************"
     echo_info "\t\t                                "
-    echo_info "\t\tCLUSTER SVC  : $CLUSTER_SVC     "
+    echo_info "\t\tCLUSTER_SVC  : $CLUSTER_SVC     "
     echo_info "\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
     echo_info "\t\tREDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_REPLICAS     "
     echo_info "\t\t                                "
@@ -231,7 +238,7 @@ function cluster_ctrl_launcher(){
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
         log_error "[ERROR] We nedd more pods.please reset the \"replicas\" in sf-redis-cluster.yaml and recreate the statefulset"
-        log_error "[IMPORTANT] => pod_replicas >= slave_replicas * 3 "
+        log_error "[IMPORTANT] =>   pod_replicas >= slave_replicas * 3 "
         exit 1
     else
         log_info "[OK] Cluster Config OK..."
@@ -239,12 +246,11 @@ function cluster_ctrl_launcher(){
 
     log_info ">>> Perfoming Build Redis Cluster..."
 
-    # 安装redis的ruby环境
+    # 安装 redis-trib.rb 的依赖
 #    gem install rdoc
 #    gem install redis --version=4.0.1
     gem install --local /rdoc-600.gem
     gem install --local /redis-401.gem
-
 
     while true; do
         IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
@@ -255,7 +261,7 @@ function cluster_ctrl_launcher(){
         do
             redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
             if test "$?" != "0" ; then
-                log_info "Connected to $ip failed ,executing break"
+                log_error "[ERROR] Connected to $ip failed ,execute break"
                 break
             fi
             CLUSTER_CONFIG=${ip}":6379 "${CLUSTER_CONFIG}
