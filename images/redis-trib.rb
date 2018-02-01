@@ -23,7 +23,6 @@
 
 require 'rubygems'
 require 'redis'
-require 'dir'
 
 ClusterHashSlots = 16384
 MigrateDefaultTimeout = 60000
