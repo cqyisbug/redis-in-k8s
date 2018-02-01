@@ -323,9 +323,6 @@ function cluster_ctrl_launcher(){
                             log_error " Connected to $ip failed ,execute break"
                             break
                         fi
-                        CLUSTER_CONFIG=${ip}":6379 "${CLUSTER_CONFIG}
-                        log_info "Cluster config : $CLUSTER_CONFIG"
-                        CLUSTER_NODE=${ip}
                         let new_index++
                     done
 
@@ -333,14 +330,19 @@ function cluster_ctrl_launcher(){
 
                     if test $new_index -ge $NEW_REPLICAS ; then
                         log_info ">>> Performing Add New Node To The Existed Redis Cluster..."
-                        
-                        #这里要提出新的ip,
-                        for ip in $IP_ARRAY ; do
-                            sed -i "s/$ip/\"\"/" $NEW_IP_ARRAY
-                        done
 
-                        for ip in $NEW_IP_ARRAY ; do 
-                            /code/redis/redis-trib.rb add-node --auto $ip:6379
+                        for ip_a in $NEW_IP_ARRAY ; do
+                            EXISTS=0
+                            for ip_b in $IP_ARRAY ; do 
+                                if test $ip_a == $ip_b ; then
+                                    EXISTS=1
+                                    break
+                                fi
+                            done
+                            
+                            if $EXISTS -eq 0 ;then 
+                                /code/redis/redis-trib.rb add-node --auto $ip_a:6379
+                            fi
                         done
 
                         log_info "[OK] Congratulations,Redis Cluster Completed!"
