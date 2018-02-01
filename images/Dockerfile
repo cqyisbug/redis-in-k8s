@@ -71,7 +71,9 @@ COPY redis-4.0.1.gem /redis-401.gem
 COPY rdoc-6.0.0.gem /rdoc-600.gem
 COPY redis-trib.rb /code/redis/redis-trib.rb
 
-RUN chmod 777 /code/redis/entrypoint.sh
+
+RUN chmod +x /code/redis/entrypoint.sh ;\
+	chmod +x /code/redis/redis-trib.rb
 
 CMD [ "/code/redis/entrypoint.sh" ]
 ENTRYPOINT [ "bash", "-c" ]
