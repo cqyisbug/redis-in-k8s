@@ -243,7 +243,7 @@ function cluster_ctrl_launcher(){
     #
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
-        log_error "[ERROR] We Need More Pods, Please Reset The \"replicas\" In  sf-redis-cluster.yaml And Recreate The StatefulSet"
+        log_error " We Need More Pods, Please Reset The \"replicas\" In  sf-redis-cluster.yaml And Recreate The StatefulSet"
         log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
         exit 1
     else
@@ -261,7 +261,7 @@ function cluster_ctrl_launcher(){
         do
             redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
             if test "$?" != "0" ; then
-                log_error "[ERROR] Connected to $ip failed ,execute break"
+                log_error " Connected to $ip failed ,execute break"
                 break
             fi
             CLUSTER_CONFIG=${ip}":6379 "${CLUSTER_CONFIG}
@@ -300,7 +300,7 @@ function cluster_ctrl_launcher(){
 
         if test $NEW_REPLICAS -gt $NODES ; then
             if test $HOST_NETWORK == "true" ; then
-                log_warn "[WARNNING] When you use host network,make sure that the number of pod is less than node"
+                log_warn " When you use host network,make sure that the number of pod is less than node"
                 NEW_REPLICAS=$NODES
             fi
         fi
@@ -320,7 +320,7 @@ function cluster_ctrl_launcher(){
                     do
                         redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
                         if test "$?" != "0" ; then
-                            log_error "[ERROR] Connected to $ip failed ,execute break"
+                            log_error " Connected to $ip failed ,execute break"
                             break
                         fi
                         CLUSTER_CONFIG=${ip}":6379 "${CLUSTER_CONFIG}
@@ -353,7 +353,7 @@ function cluster_ctrl_launcher(){
                 done
             fi
         else
-            log_warn "[WARNNING] Sorry,We Dont Support The Delete Operation."
+            log_warn " Sorry,We Dont Support The Delete Operation."
         fi
     done
 }
