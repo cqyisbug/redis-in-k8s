@@ -17,7 +17,7 @@
 #       2. CLUSTER_CTRL = true
 #           将之前的节点拼接成一个集群
 #      集群模式的说明:
-#      集群普通节点的pod数量 必须 大于等于 (集群每个主节点的副本数 * 3)
+#      集群普通节点的pod数量 必须 大于等于 (集群每个主节点的副本数*3 + 3)
 #      如果想让集群外访问,只需要在yaml里面配置就可以了,不需要再来修改 shell 脚本
 #      
 #
@@ -235,7 +235,7 @@ function cluster_ctrl_launcher(){
     log_info ">>> Performing Cluster Config Check"
     REPLICAS=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.replicas\"")
     # 
-    let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3
+    let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
         log_error "[ERROR] We nedd more pods.please reset the \"replicas\" in sf-redis-cluster.yaml and recreate the statefulset"
         log_error "[IMPORTANT] =>   pod_replicas >= slave_replicas * 3 "

@@ -47,7 +47,7 @@ redis-trib.rb info --detail host:port
 
 ### 目前我所遇到的问题
 - kubernetes (k8s) 集群外如何访问 pod内的Redis？
-    - 添加 NodePort Service ？这是不够的，因为当你使用redis集群模式的时候，你set 或者 get 或者其他操作，可能会重定向到其他pod，这时你可能会注意到，我用run_new.sh 搭建的集群使用的时headless service，它会重定向到一个集群内的ip，这时候怎么办？    解决办法1.尝试使用其他网络组件  解决办法2.让pod使用node借点的网络配置。给pod添加以下两个属性即可。
+    - 添加 NodePort Service ？这是不够的，因为当使用redis集群模式的时候，set 或者 get 或者其他操作，可能会重定向到其他pod，这时你可能会注意到，我用run_new.sh 搭建的集群使用的时headless service，它会重定向到一个集群内的ip，这时候怎么办？    解决办法1.尝试使用其他网络组件  解决办法2.让pod使用node借点的网络配置。给pod添加以下两个属性即可。
     ```
             hostNetwork: true
             dnsPolicy: ClusterFirstWithHostNet
