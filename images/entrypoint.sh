@@ -56,11 +56,11 @@ function log_error(){
 function master_launcher(){
 
     echo_info "************************************************************************************"
-    echo_info "\t\t                                "
-    echo_info "\t\tMaster Port  : $MASTER_PORT     "
-    echo_info "\t\tSentinel HOST: $SENTINEL_HOST   "
-    echo_info "\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "\t\t                                "
+    echo_info "\t\t\t                                "
+    echo_info "\t\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "\t\t\tSentinel HOST: $SENTINEL_HOST   "
+    echo_info "\t\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "\t\t\t                                "
     echo_info "************************************************************************************"
 
     # 循环10次
@@ -101,12 +101,12 @@ function master_launcher(){
 function slave_launcher(){
 
     echo_info "************************************************************************************"
-    echo_info "\t\t                                "
-    echo_info "\t\tMaster Host  : $MASTER_HOST     "
-    echo_info "\t\tMaster Port  : $MASTER_PORT     "
-    echo_info "\t\tSentinel HOST: $SENTINEL_HOST   "
-    echo_info "\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "\t\t                                "
+    echo_info "\t\t\t                                "
+    echo_info "\t\t\tMaster Host  : $MASTER_HOST     "
+    echo_info "\t\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "\t\t\tSentinel HOST: $SENTINEL_HOST   "
+    echo_info "\t\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "\t\t\t                                "
     echo_info "************************************************************************************"
 
     while true; do
@@ -151,12 +151,12 @@ function sentinel_launcher(){
     echo -e "\n"
 
     echo_info "************************************************************************************"
-    echo_info "\t\t                                "
-    echo_info "\t\tMaster Host  : $MASTER_HOST     "
-    echo_info "\t\tMaster Port  : $MASTER_PORT     "
-    echo_info "\t\tSentinel SVC : $SENTINEL_SVC    "
-    echo_info "\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "\t\t                                "
+    echo_info "\t\t\t                                "
+    echo_info "\t\t\tMaster Host  : $MASTER_HOST     "
+    echo_info "\t\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "\t\t\tSentinel SVC : $SENTINEL_SVC    "
+    echo_info "\t\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "\t\t\t                                "
     echo_info "************************************************************************************"
 
     MASTER_IP=""
@@ -225,11 +225,11 @@ function cluster_launcher(){
 # 集群模式 集群配置节点启动流程代码
 function cluster_ctrl_launcher(){
     echo_info "************************************************************************************"
-    echo_info "\t\t                                "
-    echo_info "\t\tCLUSTER_SVC  : $CLUSTER_SVC     "
-    echo_info "\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
-    echo_info "\t\tREDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_REPLICAS     "
-    echo_info "\t\t                                "
+    echo_info "\t\t\t                                "
+    echo_info "\t\t\tCLUSTER_SVC  : $CLUSTER_SVC     "
+    echo_info "\t\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
+    echo_info "\t\t\tREDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_QUANTNUM     "
+    echo_info "\t\t\t                                "
     echo_info "************************************************************************************"
 
     # 安装 redis-trib.rb 的依赖
@@ -239,7 +239,7 @@ function cluster_ctrl_launcher(){
     gem install --local /redis-401.gem
 
     log_info ">>> Performing Cluster Config Check"
-    REPLICAS=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.replicas\"")
+    REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq ".spec.replicas")
     #
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
@@ -289,9 +289,9 @@ function cluster_ctrl_launcher(){
 
     while true ; do
         log_info ">>> Performing Check Redis Cluster Pod Replicas"
-        NEW_REPLICAS=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.replicas\"")
-        NODES=$(curl ${API_SERVER_ADDR}"/api/v1/nodes | jq \".items | length\"")
-        HOST_NETWORK=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.template.spec.hostNetwork\"" )
+        NEW_REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq ".spec.replicas")
+        NODES=$(curl ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
+        HOST_NETWORK=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq ".spec.template.spec.hostNetwork" )
         log_info "Current Pod Replicas : $NEW_REPLICAS"
         log_info "Current Nodes QuantNum : $NODES"
 
@@ -408,7 +408,7 @@ if [[ $CLUSTER_CTRL == "true" ]] ; then
 fi
 
 echo_info "************************************************************************************"
-echo_info "\t\t"
-echo_info "\t\t       RedisDocker"
-echo_info "\t\t"
+echo_info "\t\t\t"
+echo_info "\t\t\t       RedisDocker"
+echo_info "\t\t\t"
 echo_info "************************************************************************************"
