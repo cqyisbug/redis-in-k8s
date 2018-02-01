@@ -72,5 +72,5 @@ COPY redis-trib.rb /code/redis/redis-trib.rb
 
 RUN chmod 777 /code/redis/entrypoint.sh
 
-CMD [ "/code/redis/run.sh" ]
+CMD [ "/code/redis/entrypoint.sh" ]
 ENTRYPOINT [ "bash", "-c" ]
