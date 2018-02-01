@@ -19,7 +19,7 @@
 #      集群模式的说明:
 #      集群普通节点的pod数量 必须 大于等于 (集群每个主节点的副本数*3 + 3)
 #      如果想让集群外访问,只需要在yaml里面配置就可以了,不需要再来修改 shell 脚本
-#      
+#
 #
 #==================================================================================================================
 
@@ -232,29 +232,29 @@ function cluster_ctrl_launcher(){
     echo_info "\t\t                                "
     echo_info "************************************************************************************"
 
-    log_info ">>> Performing Cluster Config Check"
-    REPLICAS=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.replicas\"")
-    # 
-    let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
-    if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
-        log_error "[ERROR] We nedd more pods.please reset the \"replicas\" in sf-redis-cluster.yaml and recreate the statefulset"
-        log_error "[IMPORTANT] =>   pod_replicas >= slave_replicas * 3 "
-        exit 1
-    else
-        log_info "[OK] Cluster Config OK..."
-    fi
-
-    log_info ">>> Perfoming Build Redis Cluster..."
-
     # 安装 redis-trib.rb 的依赖
 #    gem install rdoc
 #    gem install redis --version=4.0.1
     gem install --local /rdoc-600.gem
     gem install --local /redis-401.gem
 
+    log_info ">>> Performing Cluster Config Check"
+    REPLICAS=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.replicas\"")
+    #
+    let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
+    if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
+        log_error "[ERROR] We nedd more pods.please reset the \"replicas\" in sf-redis-cluster.yaml and recreate the statefulset"
+        log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
+        exit 1
+    else
+        log_info "[OK] Cluster Config OK..."
+    fi
+
+    log_info ">>> Performing Redis Cluster Pod Check..."
+
     while true; do
         IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
-        log_info "IP_Array: $IP_ARRAY"
+        log_info "Ready Pod IP : $IP_ARRAY"
         CLUSTER_CONFIG=""
         index=0
         for ip in $IP_ARRAY ;
@@ -271,65 +271,41 @@ function cluster_ctrl_launcher(){
         done
 
         log_info "index : $index "
-        if test $index -ge $REDIS_CLUSTER_QUANTNUM ; then
-            log_info "Cluster controller start building redis cluster...."
-            yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTNUM $CLUSTER_CONFIG
-            # 集群外访问
-            # yes yes | head -1 | /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
-            log_info "Congratulations,Redis Cluster Completed!"
+        if test $index -ge $REPLICAS ; then
+            log_info ">>> Performing Build Redis Cluster..."
+            if test $REDIS_CLUSTER_SLAVE_QUANTNUM -eq 0 ;then
+                yes yes | head -1 | /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
+            else
+                yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTNUM $CLUSTER_CONFIG
+            fi
+            log_info "[OK] Congratulations,Redis Cluster Completed!"
             break
         else
-            log_info "Waiting for the cluster node to start...Sleep 5 secs"
+            log_info "Waiting For All Pod To Be Ready! Sleep 5 secs..."
             sleep 5
             continue
         fi
     done
 
     while true ; do
-        log_info "Redis Cluster State : "
-        /code/redis/redis-trib.rb check $CLUSTER_NODE:6379
-        sleep 300
+        log_info ">>> Performing Check Redis Cluster Pod Replicas"
+        NEW_REPLICAS=$(curl ${API_SERVER_ADDR}"/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq \".spec.replicas\"")
+        log_info "Current Pod Replicas:$NEW_REPLICAS"
+        if test $NEW_REPLICAS -ge $REPLICAS ;then
+            if test $NEW_REPLICAS -eq $replicas ;then
+                log_info ">>> Performing Check Redis Cluster..."
+                /code/redis/redis-trib.rb check $CLUSTER_NODE:6379
+                sleep 120
+            else
+                log_info ">>> Performing Add Node To The Redis Cluster"
+                "take a break..."
+            fi
+        else
+            log_warn "[WARNNING] Sorry,We Dont Support The Delete Operation."
+        fi
     done
 }
 
-
-if test $# -ne 0 ; then
-# 开始自定义命令脚本 根据参数来进行一些查询
-    case $1 in
-        "nodes")
-            while true;do
-                IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
-                CLUSTER_CONFIG=""
-                index=0
-                for ip in $IP_ARRAY ;
-                do
-                    redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
-                    if test "$?" == "0" ; then
-                        CLUSTER_NODE_IP=$ip
-                        break 2
-                    fi
-                done
-            done
-            redis-cli -h $CLUSTER_NODE_IP -P 6379 cluster nodes
-           # /code/redis/redis-trib.rb check $CLUSTER_NODE_IP:6379 #| grep -E "S|M" | awk '{print $1"@"$2"@" $3}'
-            ;;
-        "node")
-            case $2 in
-                "-add")
-
-                    ;;
-                "-delete")
-                    ;;
-                *)
-                    ;;
-             esac
-            ;;
-        *)
-            echo "end"
-        ;;
-    esac
-    exit 0
-fi
 
 time=$(date "+%Y-%m-%d")
 echo_info "************************************************************************************"
