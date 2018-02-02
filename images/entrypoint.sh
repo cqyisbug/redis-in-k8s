@@ -239,11 +239,11 @@ function cluster_ctrl_launcher(){
     gem install --local /redis-401.gem
 
     log_info ">>> Performing Cluster Config Check"
-    REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq ".spec.replicas")
+    REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
     #
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
-        log_error " We Need More Pods, Please Reset The \"replicas\" In  sf-redis-cluster.yaml And Recreate The StatefulSet"
+        log_error " We Need More Pods, Please Reset The \"replicas\" In  sts-redis-cluster.yaml And Recreate The StatefulSet"
         log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
         exit 1
     else
@@ -289,9 +289,9 @@ function cluster_ctrl_launcher(){
 
     while true ; do
         log_info ">>> Performing Check Redis Cluster Pod Replicas"
-        NEW_REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq ".spec.replicas")
+        NEW_REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
         NODES=$(curl ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
-        HOST_NETWORK=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sf-redis-cluster | jq ".spec.template.spec.hostNetwork" )
+        HOST_NETWORK=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
         log_info "Current Pod Replicas : $NEW_REPLICAS"
         log_info "Current Nodes QuantNum : $NODES"
 

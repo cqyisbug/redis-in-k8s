@@ -1,30 +1,30 @@
 apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
-  name: sf-redis-slave
+  name: sts-redis-slave
 spec:
   serviceName: "svc-redis-slave"
   replicas: 3
   template:
     metadata:
       labels:
-        name: sf-redis-slave
+        name: sts-redis-slave
         environment: test
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-      - name: cont-redis-slave
-        image: h3crd-wlan1.chinacloudapp.cn:5000/redis:beta
+      - name: cntr-redis-slave
+        image: YourImage
         imagePullPolicy: Always
         env:
         - name: SLAVE
           value: "true"
         - name: MASTER_HOST
-          value: sf-redis-master-0.svc-redis-master
+          value: sts-redis-master-0.svc-redis-master
         - name: MASTER_PORT
           value: "6379"
         - name: SENTINEL_HOST
-          value: sf-redis-sentinel-0.svc-redis-sentinel 
+          value: sts-redis-sentinel-0.svc-redis-sentinel 
         - name: SENTINEL_PORT
           value: "26379"
         ports:

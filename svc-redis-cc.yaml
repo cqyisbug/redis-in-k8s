@@ -10,4 +10,4 @@ spec:
     targetPort: 6379
   clusterIP: None
   selector:
-    name: sf-redis-cc
+    name: sts-redis-cc

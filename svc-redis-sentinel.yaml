@@ -10,4 +10,4 @@ spec:
     targetPort: 26379
   clusterIP: None
   selector:
-    name: sf-redis-sentinel
+    name: sts-redis-sentinel

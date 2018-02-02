@@ -49,6 +49,8 @@ redis-trib.rb info --detail host:port
 -----
 
 ### 目前我所遇到的问题
+> 目前所有问题都已经解决  
+
 - kubernetes (k8s) 集群外如何访问 pod内的Redis？
     - 添加 NodePort Service ？这是不够的，因为当使用redis集群模式的时候，set 或者 get 或者其他操作，可能会重定向到其他pod，这时你可能会注意到，我用run_new.sh 搭建的集群使用的时headless service，它会重定向到一个集群内的ip，这时候怎么办？    解决办法1.尝试使用其他网络组件  解决办法2.让pod使用node借点的网络配置。给pod添加以下两个属性即可。
     ```
@@ -56,10 +58,7 @@ redis-trib.rb info --detail host:port
             dnsPolicy: ClusterFirstWithHostNet
     ``` 
 - 当使用redis集群模式的时候，动态扩容问题？
-    - 这个问题纯粹是我自己懒了，没有继续往下写，接下来的一段时间内我会补上去。
-
-- 目前我在Dockerfile里面添加了ruby的环境
-    - 打算用ruby干大事情啊....
+    -  这个问题已经在2018-02-02 解决,缩容不支持,只支持扩容
 
 -----
 
@@ -84,16 +83,16 @@ sf 表示statefulset
 svc 表示service
 
 - sentinel 所需: 
-    - sf-redis-master.yaml
-    - sf-redis-slave.yaml
-    - sf-redis-sentinel.yaml
+    - sts-redis-master.yaml
+    - sts-redis-slave.yaml
+    - sts-redis-sentinel.yaml
     - svc-redis-master.yaml
     - svc-redis-slave.yaml
     - svc-redis-sentinel.yaml
 
 - cluster 所需:
-    - sf-redis-cluster.yaml
-    - sf-redis-cc.yaml
+    - sts-redis-cluster.yaml
+    - sts-redis-cc.yaml
     - svc-redis-cluster.yaml
     - svc-redis-cc.yaml
     
