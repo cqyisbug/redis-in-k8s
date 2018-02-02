@@ -240,7 +240,9 @@ function cluster_ctrl_launcher(){
 
     log_info ">>> Performing Cluster Config Check"
     REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
-    #
+    
+
+
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
         log_error " We Need More Pods, Please Reset The \"replicas\" In  sts-redis-cluster.yaml And Recreate The StatefulSet"
@@ -323,7 +325,7 @@ function cluster_ctrl_launcher(){
                             log_error " Connected to $ip failed ,execute break"
                             break
                         fi
-                        CLUSTER_NODE=${ip}
+                        # CLUSTER_NODE=${ip}
                         let new_index++
                     done
 
