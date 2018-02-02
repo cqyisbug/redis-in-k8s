@@ -79,7 +79,9 @@ step3: 保存
 
 #####  yaml 解释一波~
 
-sf 表示statefulset
+启动时没有顺序影响,需要什么模式就使用对应的yaml进行kubectl create 就行  
+
+sts 表示statefulset
 svc 表示service
 
 - sentinel 所需: 
