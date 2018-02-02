@@ -1476,6 +1476,8 @@ class RedisTrib
 
         # If --master-id was specified, try to resolve it now so that we
         # abort before starting with the node configuration.
+
+        master = get_master_with_least_replicas
         if opt['slave']
             if opt['master-id']
                 master = get_node_by_name(opt['master-id'])
@@ -1483,7 +1485,7 @@ class RedisTrib
                     xputs "[ERR] No such master ID #{opt['master-id']}"
                 end
             else
-                master = get_master_with_least_replicas
+                # master = get_master_with_least_replicas
                 xputs "Automatically selected master #{master}"
             end
         end
@@ -1518,7 +1520,7 @@ class RedisTrib
             xputs ">>> Performing automatically resharding slots to the new node"
             opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
 
-            master = get_master_with_least_replicas
+            # master = get_master_with_least_replicas
             if master.info[:replicas].length > 0
                 masters = 0;
                 @nodes.each {|n|
