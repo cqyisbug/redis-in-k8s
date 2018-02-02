@@ -238,10 +238,19 @@ function cluster_ctrl_launcher(){
     gem install --local /rdoc-600.gem
     gem install --local /redis-401.gem
 
+
+    while true ; do
+        Listener=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".code")
+        if [[ $Listener == "404" ]] ; then
+            sleep 5
+            continue
+        else
+            break
+        fi
+    done
+
     log_info ">>> Performing Cluster Config Check"
     REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
-    
-
 
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
