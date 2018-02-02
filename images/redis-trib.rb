@@ -1516,12 +1516,14 @@ class RedisTrib
 
             wait_cluster_join
 
-            xputs "\n[WARNING] Moving slots is a dangerious operation,please don't interrupt it."
-            xputs ">>> Performing automatically resharding slots to the new node"
             opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
 
             # master = get_master_with_least_replicas
             if master.info[:replicas].length > 0
+
+                xputs "\n[WARNING] Moving slots is a dangerious operation,please don't interrupt it."
+                xputs ">>> Performing automatically resharding slots to the new node"
+
                 masters = 0;
                 @nodes.each {|n|
                     if n.has_flag?("master")
