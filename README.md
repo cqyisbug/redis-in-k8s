@@ -97,7 +97,22 @@ svc 表示service
     - sts-redis-cc.yaml
     - svc-redis-cluster.yaml
     - svc-redis-cc.yaml
-    
+
+
+##### redis宿主机上启动
+
+```
+Feb 03 10:13:40 master redis-server[115685]: *** FATAL CONFIG FILE ERROR ***
+Feb 03 10:13:40 master redis-server[115685]: Reading the configuration file, at line 3
+Feb 03 10:13:40 master redis-server[115685]: >>> 'logfile "/home/redis/log/redis.log"'
+Feb 03 10:13:40 master redis-server[115685]: Can't open the log file: Permission denied
+Feb 03 10:13:40 master systemd[1]: redis.service: main process exited, code=exited, status=1/FAILURE
+```
+
+遇到这个问题一般都是用systemctl start redis的时候遇到的,问题原因目前发现可能有两个,1 /home/redis 的目录权限  2 开启了selinux,对这个东西不懂啊~  
+原因1解决办法: chmod 或者chown ,这个不细讲了
+原因2解决办法:  setenfore 0 
+
 ------
 
 
