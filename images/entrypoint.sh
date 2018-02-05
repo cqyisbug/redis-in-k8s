@@ -83,7 +83,7 @@ function master_launcher(){
                 redis-server /config/redis/slave.conf --protected-mode no
                 break
             else
-                log_error "Connecting to master failed . Waiting...."
+                log_error "Can not connect to Master . Waiting...."
             fi
         fi
         let guard++
@@ -127,7 +127,7 @@ function slave_launcher(){
             break
         fi
 
-        log_error "Connecting to master failed.  Waiting..."
+        log_error "Can not connect to Master .  Waiting..."
         sleep 5
     done
 
@@ -353,6 +353,7 @@ function cluster_ctrl_launcher(){
                             done
                             
                             if  test $EXISTS -eq 0 ; then 
+                                # 这里的auto就是之前改的redis-trib.rb,新增进去的子命令,用于自动迁移slot
                                 /code/redis/redis-trib.rb add-node --auto $ip_a:6379  $CLUSTER_NODE:6379
                             fi
                         done
@@ -369,7 +370,7 @@ function cluster_ctrl_launcher(){
                 done
             fi
         else
-            log_warn " Sorry,We Dont Support The Delete Operation."
+            log_warn " Sorry,We Dont Support The Delete-Node Operation."
         fi
     done
 }
