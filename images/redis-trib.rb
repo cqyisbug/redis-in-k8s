@@ -354,7 +354,11 @@ class RedisTrib
     end
 
     def check_cluster_health(opt = {})
-
+    # 0 集群健康
+    # 1 集群节点配置异常,可能有节点正在加入到节点中
+    # 2 集群中有节点正在迁移数据
+    # 3 集群中有节点正在导入数据
+    # 4 集群中存在尚未分配到节点上的数据槽
         return 1 if !is_config_consistent?
 
         open_slots = []
