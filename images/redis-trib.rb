@@ -353,6 +353,28 @@ class RedisTrib
         sorted[0]
     end
 
+    def check_cluster_health(opt = {})
+
+        return 1 if !is_config_consistent?
+
+        open_slots = []
+        @nodes.each {|n|
+            if n.info[:migrating].size > 0
+                return 2
+            end
+            if n.info[:importing].size > 0
+                return 3
+            end
+        }
+
+        slots = covered_slots
+        if slots.length == ClusterHashSlots
+            return 0
+        else
+            return 4
+        end
+    end
+
     def check_cluster(opt = {})
         xputs ">>> Performing Cluster Check (using node #{@nodes[0]})"
         show_nodes if !opt[:quiet]
@@ -1124,7 +1146,12 @@ class RedisTrib
 
     def check_cluster_cmd(argv, opt)
         load_cluster_info_from_node(argv[0])
-        check_cluster
+
+        if opt["health"]
+            print check_cluster_health
+        else
+            check_cluster
+        end
     end
 
     def info_cluster_cmd(argv, opt)
@@ -1876,6 +1903,7 @@ COMMANDS = {
 ALLOWED_OPTIONS = {
     "create" => {"replicas" => true},
     "info" => {"detail" => false},
+    "check" => {"health" => false},
     "add-node" => {"slave" => false, "master-id" => true, "auto" => false},
     "import" => {"from" => :required, "copy" => false, "replace" => false},
     "reshard" => {"from" => true, "to" => true, "slots" => true, "yes" => false, "timeout" => true, "pipeline" => true},
