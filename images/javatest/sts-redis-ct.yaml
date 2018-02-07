@@ -8,7 +8,7 @@ spec:
   template:
     metadata:
       labels:
-        name: sf-redis-ct
+        name: sts-redis-ct
         environment: test
     spec:
       terminationGracePeriodSeconds: 10
