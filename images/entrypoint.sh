@@ -263,7 +263,7 @@ function cluster_ctrl_launcher(){
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
     #  这个情况下是因为组成不了集群,锁以直接报错退出
-        log_error " We Need More Pods, Please Reset The \"replicas\" In  sts-redis-cluster.yaml And Recreate The StatefulSet"
+        log_error " We Need More Pods, please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet"
         log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
         exit 1
     else
@@ -301,7 +301,7 @@ function cluster_ctrl_launcher(){
             log_info "[OK] Congratulations,Redis Cluster Completed!"
             break
         else
-            log_info "Waiting For All Pod To Be Ready! Sleep 5 secs..."
+            log_info "Waiting for all pod to be ready! Sleep 5 secs..."
             sleep 5
             continue
         fi
