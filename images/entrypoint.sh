@@ -240,8 +240,9 @@ function cluster_ctrl_launcher(){
 
 
     while true ; do
-        Listener=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".code")
+        Listener=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".code")
         if [[ $Listener == "404" ]] ; then
+            echo_info ">>> Waiting Until sts-redis-cluster is Created... "
             sleep 5
             continue
         else
@@ -250,15 +251,25 @@ function cluster_ctrl_launcher(){
     done
 
     log_info ">>> Performing Cluster Config Check"
-    REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
+    REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
+    HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
 
-    let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
-    if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
-        log_error " We Need More Pods, Please Reset The \"replicas\" In  sts-redis-cluster.yaml And Recreate The StatefulSet"
-        log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
-        exit 1
-    else
-        log_info "[OK] Cluster Config OK..."
+    echo_info "+--------------------------------------------------------------------+"
+    echo_info "|                                                                    |"
+    echo_info "|\t\tREPLICAS: $REPLICAS"
+    echo_info "|\t\tHOST_NETWORK: $HOST_NETWORK"
+    echo_info "|                                                                    |"
+    echo_info "+--------------------------------------------------------------------+"
+
+    if test $HOST_NETWORK == "true" ; then
+        let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
+        if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
+            log_error " We Need More Pods, Please Reset The \"replicas\" In  sts-redis-cluster.yaml And Recreate The StatefulSet"
+            log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
+            exit 1
+        else
+            log_info "[OK] Cluster Config OK..."
+        fi
     fi
 
     log_info ">>> Performing Redis Cluster Pod Check..."
@@ -300,9 +311,9 @@ function cluster_ctrl_launcher(){
 
     while true ; do
         log_info ">>> Performing Check Redis Cluster Pod Replicas"
-        NEW_REPLICAS=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
-        NODES=$(curl ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
-        HOST_NETWORK=$(curl ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
+        NEW_REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
+        NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
+        HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
         log_info "Current Pod Replicas : $NEW_REPLICAS"
         log_info "Current Nodes QuantNum : $NODES"
 
