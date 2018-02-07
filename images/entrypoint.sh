@@ -261,7 +261,6 @@ function cluster_ctrl_launcher(){
 
 
     let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_REPLICAS*3+3
-    echo "*&*^&*&^*^*&^=========>$CLUSER_POD_QUANTNUM"
     if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
     #  这个情况下是因为组成不了集群,锁以直接报错退出
         log_error " We Need More Pods, Please Reset The \"replicas\" In  sts-redis-cluster.yaml And Recreate The StatefulSet"
