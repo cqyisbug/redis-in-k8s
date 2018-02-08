@@ -1,42 +1,43 @@
+# redis 集群创建启动脚本,避免重复劳动
+
 #!/bin/bash
 
-mkdir -p /tmp/redis_install
-cd /tmp/redis_install
+rpm -qa | grep -E "redis|jemalloc" | rpm -e
+ps -ef | grep redis | awk '{print $2}' | xargs kill -9
 
-REDIS_VERSION="4.0.7"
+REDIS_VERSION=4.0.8
 
-curl -O http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz && curl -O http://www.rpmfind.net/linux/epel/7/x86_64/Packages/j/jemalloc-3.6.0-1.el7.x86_64.rpm
+Listener=$(command -v redis-server)
+if test ${#Listener[*]} -eq 1 ; then 
+	mkdir -p /tmp/redis
+	cd /tmp/redis
+	curl -O http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz
+	curl -O https://www.rpmfind.net/linux/epel/7/x86_64/Packages/j/jemalloc-3.6.0-1.el7.x86_64.rpm
+	tar -zxf redis-$REDIS_VERSION.tar.gz
+	rpm -ivh *.rpm
+	cd redis-$REDIS_VERSION
+	make MALLOC=$(which jemalloc.sh)
+	make install
+	cp src/redis-trib.rb /usr/bin/redis-trib.rb
+	chmod +x /usr/bin/redis-trib.rb
+fi
 
-rpm -ivh *.rpm
-yum install -y gcc
-tar -zxf redis-$REDIS_VERSION.tar.gz
-cd redis-$REDIS_VERSION
-make MALLOC=$(which jemalloc.sh)
-make install 
+Cluster_Config=""
 
-cd /tmp
+for file in 7000 7001 7002 7003 7004 7005 ; do
+	echo $file
+	rm -rf /redis/$file
+	mkdir -p /redis/$file
+	cd /redis/$file
+	echo "bind $(hostname -i) 127.0.0.1" > /redis/$file/redis.conf
+	echo "port $file" >> /redis/$file/redis.conf
+	echo "appendonly yes" >> /redis/$file/redis.conf
+	echo "daemonize yes" >> /redis/$file/redis.conf
+	echo "cluster-enabled yes" >> /redis/$file/redis.conf
+	echo "cluster-config-file nodes.conf" >> /redis/$file/redis.conf
+	echo "cluster-node-timeout 5000" >> /redis/$file/redis.conf
+	redis-server redis.conf
+	Cluster_Config=$Cluster_Config"$(hostname -i):$file "
+done
 
-DIR_ARR=(7000 7001 7002 7003 7004 7005)
-
-CLUSTER_COFIG=" "
-
-for f in ${DIR_ARR[*]} ; do 
-    mkdir $f
-    cd $f
-    rm -rf *
-    echo "port ${f}" > redis.conf
-    echo "cluster-enabled yes" >> redis.conf
-    echo "cluster-config-file nodes.conf" >> redis.conf
-    echo "cluster-node-timeout 5000" >> redis.conf
-    echo "appendonly yes" >> redis.conf
-    echo "daemonize yes" >> redis.conf
-    echo "protected-mode no" >> redis.conf
-    echo "bind $(hostname -i) 127.0.0.1" >> redis.conf
-    CLUSTER_COFIG="${CLUSTER_COFIG}127.0.0.1:$f "
-    redis-server redis.conf   
-    cd ..
-done 
-
-cd /tmp/redis_install/redis-$REDIS_VERSION/src
-cp /tmp/redis_install/redis-$REDIS_VERSION/src/redis-trib.rb /usr/local/bin/redis-trib.rb
-yes yes |head -1 |redis-trib.rb create --replicas 1 $CLUSTER_COFIG
+echo yes | redis-trib.rb create --replicas 1 $Cluster_Config

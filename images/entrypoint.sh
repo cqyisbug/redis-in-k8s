@@ -388,6 +388,7 @@ function cluster_ctrl_launcher(){
 if test $# -ne 0 ; then
     case $1 in
         "health")
+            # --health 命令不是原生的,对 redis-trib.rb 做过修改
             /code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:6379
             ;;
         *)
