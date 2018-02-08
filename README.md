@@ -97,6 +97,20 @@ svc 表示service
     - sts-redis-cc.yaml
     - svc-redis-cluster.yaml
     - svc-redis-cc.yaml
+    - svc-redis-cluster-nodeport.yaml
+
+> 2018 02 08 新增svc-redis-cluster-nodeport.yaml
+```
+为了方便集群内访问redis,并充分利用k8s环境,添加了一个普通的service
+
+java 代码使用示例(jedis)如下:
+     Set<HostAndPort> jedisClusterNodes = new HashSet<HostAndPort>();
+
+    jedisClusterNodes.add(new HostAndPort("svc-redis-cluster-np", 6379));
+
+    JedisCluster jc = new JedisCluster(jedisClusterNodes);
+```
+
 
 
 ##### redis宿主机上启动
