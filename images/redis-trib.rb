@@ -359,23 +359,24 @@ class RedisTrib
     # 2 集群中有节点正在迁移数据
     # 3 集群中有节点正在导入数据
     # 4 集群中存在尚未分配到节点上的数据槽
-        return 1 if !is_config_consistent?
+    
+        return '{"code":1,"message":"集群节点配置异常,可能有节点正在加入到节点中"}' if !is_config_consistent?
 
         open_slots = []
         @nodes.each {|n|
             if n.info[:migrating].size > 0
-                return 2
+                return '{"code":2,"message":"集群中有节点正在迁移数据"}'
             end
             if n.info[:importing].size > 0
-                return 3
+                return '{"code":3,"message":"集群中有节点正在导入数据"}'
             end
         }
 
         slots = covered_slots
         if slots.length == ClusterHashSlots
-            return 0
+            return '{"code":0,"message":"redis集群健康"}'
         else
-            return 4
+            return '{"code":4,"message":"集群中存在尚未分配到节点上的数据槽"}'
         end
     end
 

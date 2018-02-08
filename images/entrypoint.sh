@@ -372,18 +372,30 @@ function cluster_ctrl_launcher(){
                         log_info "[OK] Congratulations,Redis Cluster Completed!"
                         break
                     else
-                        log_info "Waiting For All Pod To Be Ready! Sleep 5 secs..."
+                        log_info "Waiting for all pod to be ready! sleep 5 secs..."
                         sleep 5
                         continue
                     fi
                 done
             fi
         else
-            log_warn " Sorry,We Dont Support The Delete-Node Operation."
+            log_error "Sorry,We do not support the delete node operation"
         fi
     done
 }
 
+
+if test $# -ne 0 ; then
+    case $1 in
+        "health")
+            /code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:6379
+            ;;
+        *)
+            log_error "wrong arguments!"
+        ;;
+    esac
+    exit 0
+fi
 
 time=$(date "+%Y-%m-%d")
 echo_info "************************************************************************************"
@@ -432,9 +444,3 @@ if [[ $CLUSTER_CTRL == "true" ]] ; then
     cluster_ctrl_launcher
     exit 0
 fi
-
-echo_info "************************************************************************************"
-echo_info "\t\t\t"
-echo_info "\t\t\t       RedisDocker"
-echo_info "\t\t\t"
-echo_info "************************************************************************************"
