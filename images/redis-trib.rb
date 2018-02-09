@@ -354,12 +354,12 @@ class RedisTrib
     end
 
     def check_cluster_health(opt = {})
-    # 0 集群健康
-    # 1 集群节点配置异常,可能有节点正在加入到节点中
-    # 2 集群中有节点正在迁移数据
-    # 3 集群中有节点正在导入数据
-    # 4 集群中存在尚未分配到节点上的数据槽
-    
+        # 0 集群健康
+        # 1 集群节点配置异常,可能有节点正在加入到节点中
+        # 2 集群中有节点正在迁移数据
+        # 3 集群中有节点正在导入数据
+        # 4 集群中存在尚未分配到节点上的数据槽
+
         return '{"code":1,"message":"集群节点配置异常,可能有节点正在加入到节点中"}' if !is_config_consistent?
 
         open_slots = []
@@ -1587,13 +1587,14 @@ class RedisTrib
                 puts "  Destination node:"
                 puts "    #{target.info_string}"
                 reshard_table = compute_reshard_table(sources, numslots)
-                puts "  Resharding plan:"
-                show_reshard_table(reshard_table)
+                # puts "  Resharding plan:"
+                # show_reshard_table(reshard_table)
 
                 reshard_table.each {|e|
                     move_slot(e[:source], target, e[:slot],
                               :dots => true,
-                              :pipeline => opt['pipeline'])
+                              :pipeline => opt['pipeline'],
+                              :quiet => true)
                 }
 
                 xputs "[OK] slots reshard finished correctly."
