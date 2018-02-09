@@ -228,7 +228,7 @@ function cluster_ctrl_launcher(){
     echo_info "\t\t\t                                "
     echo_info "\t\t\tCLUSTER_SVC  : $CLUSTER_SVC     "
     echo_info "\t\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
-    echo_info "\t\t\tREDIS_CLUSTER_SLAVE_QUANTNUM  : $REDIS_CLUSTER_SLAVE_QUANTNUM     "
+    echo_info "\t\t\tREDIS_CLUSTER_SLAVE_QUANTUM  : $REDIS_CLUSTER_SLAVE_QUANTUM     "
     echo_info "\t\t\t                                "
     echo_info "************************************************************************************"
 
@@ -260,8 +260,8 @@ function cluster_ctrl_launcher(){
     echo_info "+--------------------------------------------------------------------+"
 
 
-    let CLUSER_POD_QUANTNUM=REDIS_CLUSTER_SLAVE_QUANTNUM*3+3
-    if test $REPLICAS -lt $CLUSER_POD_QUANTNUM ; then
+    let CLUSER_POD_QUANTUM=REDIS_CLUSTER_SLAVE_QUANTUM*3+3
+    if test $REPLICAS -lt $CLUSER_POD_QUANTUM ; then
     #  这个情况下是因为组成不了集群,锁以直接报错退出
         log_error " We Need More Pods, please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet"
         log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
@@ -293,10 +293,10 @@ function cluster_ctrl_launcher(){
         log_info "index : $index "
         if test $index -ge $REPLICAS ; then
             log_info ">>> Performing Build Redis Cluster..."
-            if test $REDIS_CLUSTER_SLAVE_QUANTNUM -eq 0 ;then
+            if test $REDIS_CLUSTER_SLAVE_QUANTUM -eq 0 ;then
                 yes yes | head -1 | /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
             else
-                yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTNUM $CLUSTER_CONFIG
+                yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTUM $CLUSTER_CONFIG
             fi
             log_info "[OK] Congratulations,Redis Cluster Completed!"
             break
@@ -313,7 +313,7 @@ function cluster_ctrl_launcher(){
         NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
         HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
         log_info "Current Pod Replicas : $NEW_REPLICAS"
-        log_info "Current Nodes QuantNum : $NODES"
+        log_info "Current Nodes Quantum : $NODES"
 
         #  这里还要判断 NEW_REPLICAS NODES 和 REPLICAS 的关系
         #  如果采用了hostnetwork 的话,pod的数量不能大于 nodes的数量,所以 NEW_REPLICAS > NODES => NEW_REPLICAS=NODES
