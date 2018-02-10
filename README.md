@@ -132,5 +132,3 @@ Feb 03 10:13:40 master systemd[1]: redis.service: main process exited, code=exit
 
 如有疑问,请联系我:  
 - email: cqyisbug@163.com  
-- qq: 377141708  
-- wechat: antscqy  
