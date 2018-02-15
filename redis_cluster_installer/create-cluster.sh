@@ -2,8 +2,9 @@
 
 #!/bin/bash
 
-rpm -qa | grep -E "redis|jemalloc" | rpm -e
 ps -ef | grep redis | awk '{print $2}' | xargs kill -9
+rpm -qa | grep -E "redis|jemalloc" | rpm -e
+
 
 REDIS_VERSION=4.0.8
 
