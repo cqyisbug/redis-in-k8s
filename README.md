@@ -25,11 +25,13 @@ redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后
 
 -----
 
-### 对redis-trib.rb 的修改 2018-01-31
+### 对redis-trib.rb 的修改 2018-01-31 
+
 
 > 为 add-node 添加一个auto 命令  
 > 当目前集群中的master都有从节点时,添加的节点为master  
 > 当目前集群中至少存在一个master没有从节点时,添加的节点为slave    
+> 此修改方便redis集群在k8s集群中的扩容，只需要使用kubectl scale sts sts-redis-cluster --replicas new_replicas 命令来完成redis集群的扩容，其中new_replicas 的数值会影响redis集群是否扩容成功
 
 
 ```
