@@ -45,6 +45,16 @@ redis-trib.rb info --detail host:port
 ```  
 <img src="https://github.com/marscqy/redis-in-k8s/blob/master/info.jpg" width="787px" height="234px" style="float:left" />
 
+> 为 check新增了一个health命令，能够返回进群状态,输出json形式的信息
+```
+reids-trib.rb check --health
+```
+- {"code":0,"message":"redis集群健康"}
+- {"code":1,"message":"集群节点配置异常,可能有节点正在加入到节点中"}
+- {"code":2,"message":"集群中有节点正在迁移数据"}
+- {"code":3,"message":"集群中有节点正在导入数据"}
+- {"code":4,"message":"集群中存在尚未分配到节点上的数据槽"}
+
 
 -----
 
