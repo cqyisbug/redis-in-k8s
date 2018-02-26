@@ -8,8 +8,8 @@ rpm -qa | grep -E "redis|jemalloc" | rpm -e
 
 REDIS_VERSION=4.0.8
 
-Listener=$(command -v redis-server)
-if test ${#Listener[*]} -eq 1 ; then 
+Listener=$(redis-cli -v)
+if test ${#Listener[*]} -gt 0 ; then 
 	mkdir -p /tmp/redis
 	cd /tmp/redis
 	curl -O http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz
