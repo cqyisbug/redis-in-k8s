@@ -25,5 +25,7 @@ spec:
           value: "1"
         - name: API_SERVER_ADDR
           value: "172.20.0.12:8080"
+        - name: REDIS_PORT
+          value: "6380"
         ports:
-        - containerPort: 6379
+        - containerPort: 6380

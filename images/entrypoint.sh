@@ -79,7 +79,7 @@ function master_launcher(){
                 sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
                 THIS_IP=$(hostname -i)
                 echo "slave-announce-ip $THIS_IP" >> /config/redis/slave.conf
-                echo "slave-announce-port 6379" >> /config/redis/slave.conf
+                echo "slave-announce-port $MASTER_PORT" >> /config/redis/slave.conf
                 redis-server /config/redis/slave.conf --protected-mode no
                 break
             else
@@ -139,7 +139,7 @@ function slave_launcher(){
     sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
 
     echo "slave-announce-ip ${THIS_IP}" >> /config/redis/slave.conf
-    echo "slave-announce-port 6379" >> /config/redis/slave.conf
+    echo "slave-announce-port $MASTER_PORT" >> /config/redis/slave.conf
 
     redis-server  /config/redis/slave.conf --protected-mode no
 }
@@ -195,7 +195,7 @@ function sentinel_launcher(){
 
     sentinel_conf=/config/redis/sentinel.conf
 
-    echo "port 26379" >> ${sentinel_conf}
+    echo "port $SENTINEL_PORT" >> ${sentinel_conf}
     echo "sentinel monitor mymaster ${MASTER_IP} ${MASTER_PORT} 2" >> ${sentinel_conf}
     echo "sentinel down-after-milliseconds mymaster 30000" >> ${sentinel_conf}
     echo "sentinel failover-timeout mymaster 180000" >> ${sentinel_conf}
@@ -210,14 +210,14 @@ function cluster_launcher(){
     log_info "Starting cluster ..."
 
     THIS_IP=$(hostname -i)
-    echo "port 6379" >> /config/redis/cluster.conf
+    echo "port ${REDIS_PORT}" >> /config/redis/cluster.conf
     echo "bind $(hostname -i) 127.0.0.1 " >> /config/redis/cluster.conf
 
     echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
-    echo "slave-announce-port 6379" >> /config/redis/cluster.conf
+    echo "slave-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
 
     echo "cluster-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
-    echo "cluster-announce-port 6379" >> /config/redis/cluster.conf
+    echo "cluster-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
 
     redis-server /config/redis/cluster.conf --protected-mode no
 }
@@ -279,12 +279,12 @@ function cluster_ctrl_launcher(){
         index=0
         for ip in $IP_ARRAY ;
         do
-            redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
+            redis-cli -h ${ip} -p ${REDIS_PORT} INFO > tempinfo.log
             if test "$?" != "0" ; then
                 log_error " Connected to $ip failed ,execute break"
                 break
             fi
-            CLUSTER_CONFIG=${ip}":6379 "${CLUSTER_CONFIG}
+            CLUSTER_CONFIG=${ip}":${REDIS_PORT} "${CLUSTER_CONFIG}
             log_info "Cluster config : $CLUSTER_CONFIG"
             CLUSTER_NODE=${ip}
             let index++
@@ -328,7 +328,7 @@ function cluster_ctrl_launcher(){
         if test $NEW_REPLICAS -ge $REPLICAS ;then
             if test $NEW_REPLICAS -eq $REPLICAS ;then
                 log_info ">>> Performing Check Redis Cluster..."
-                /code/redis/redis-trib.rb check $CLUSTER_NODE:6379
+                /code/redis/redis-trib.rb check $CLUSTER_NODE:$REDIS_PORT
                 sleep 120
             else
                 log_info ">>> Performing Add Node To The Redis Cluster"
@@ -338,7 +338,7 @@ function cluster_ctrl_launcher(){
                     new_index=0
                     for ip in $NEW_IP_ARRAY ;
                     do
-                        redis-cli -h ${ip} -p 6379 INFO > tempinfo.log
+                        redis-cli -h ${ip} -p ${REDIS_PORT} INFO > tempinfo.log
                         if test "$?" != "0" ; then
                             log_error " Connected to $ip failed ,execute break"
                             break
@@ -363,7 +363,7 @@ function cluster_ctrl_launcher(){
                             
                             if  test $EXISTS -eq 0 ; then 
                                 # 这里的auto就是之前改的redis-trib.rb,新增进去的子命令,用于自动迁移slot
-                                /code/redis/redis-trib.rb add-node --auto $ip_a:6379  $CLUSTER_NODE:6379
+                                /code/redis/redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
                             fi
                         done
 
@@ -389,7 +389,7 @@ if test $# -ne 0 ; then
     case $1 in
         "health")
             # --health 命令不是原生的,对 redis-trib.rb 做过修改
-            /code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:6379
+            /code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT
             ;;
         *)
             log_error "wrong arguments!"

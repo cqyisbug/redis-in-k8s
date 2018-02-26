@@ -6,7 +6,7 @@ FROM alpine:3.6
 
 RUN apk add --no-cache 'su-exec>=0.2' sed bash ruby
 
-ENV REDIS_VERSION 4.0.7
+ENV REDIS_VERSION 4.0.8
 ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz
 # ENV REDIS_DOWNLOAD_SHA 2049cd6ae9167f258705081a6ef23bb80b7eff9ff3d0d7481e89510f27457591
 ENV TIME_ZONE Asiz/Shanghai
@@ -60,6 +60,7 @@ RUN set -ex; \
 RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/;
 
 EXPOSE 6379
+EXPOSE 6380
 EXPOSE 26379
 
 COPY redis-master.conf /config/redis/master.conf

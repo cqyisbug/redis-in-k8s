@@ -19,8 +19,10 @@ spec:
         env:
         - name: CLUSTER
           value: "true"
+        - name: REDIS_PORT
+          value: "6380"
         ports:
-        - containerPort: 6379
+        - containerPort: 6380
         volumeMounts:
         - name: rediscluster
           mountPath: /data/redis
