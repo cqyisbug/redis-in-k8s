@@ -23,6 +23,8 @@ k8s_installer 是一个在单节点上安装kubernetes的脚本。使用这个�
 
 redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后续我会优化。
 
+https://github.com/marscqy/redisscript 这是一个python脚本,使用方法仅供参考,Redis.py 中包含了 三个重要函数,分别是install_redis  check_redis scale_redis,用来安装 检查 扩容redis集群
+
 -----
 
 ### 对redis-trib.rb 的修改 2018-01-31 
