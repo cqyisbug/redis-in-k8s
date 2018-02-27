@@ -242,8 +242,9 @@ function cluster_ctrl_launcher(){
     while true ; do
         Listener=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".code")
         if [[ $Listener == "404" ]] ; then
+            echo_info ">>> Api server addr: ${API_SERVER_ADDR}"
             echo_info ">>> Waiting Until the StatefulSet->sts-redis-cluster is Created... "
-            sleep 5
+            sleep 20
             continue
         else
             break
