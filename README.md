@@ -27,6 +27,46 @@ https://github.com/marscqy/redisscript 这是一个python脚本,使用方法仅�
 
 -----
 
+### 使用说明
+
+>假设你已安装k8s和docker,{} 表示变量,需要你自己填
+
+- 1. 进入images文件夹下
+```
+docker build -t {yourtag} .
+```
+
+- 2. 修改sts 开头的yaml文件
+    - 1. YourImage替换为{yourtag}
+    - 2. sts-redis-cc.yaml 中的API_SERVER_ADDR 值修改为你的apiserver地址
+    - 3. 各个yaml中的REDIS_PORT 环境变量表示 redis在pod内使用的端口号,可改可不改
+    - 4. 需要持久化? 修改 volume.beta.kubernetes.io/storage-class: "fast" 中的fast 为你的sotrageclass 名字
+    - 5. 不需要持久化?在每个yaml中删除如下内容
+```
+        volumeMounts:
+        - name: rediscluster
+          mountPath: /data/redis
+        securityContext:
+          capabilities: {}
+          privileged: true
+  volumeClaimTemplates:
+  - metadata:
+      name: rediscluster
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "fast"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+```
+
+- 3. 启动集群
+    - 1.kubectl create -f {yaml}
+
+
+-----
+
 ### 对redis-trib.rb 的修改 2018-01-31 
 
 
