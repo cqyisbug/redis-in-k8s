@@ -55,13 +55,13 @@ function log_error(){
 # 哨兵模式 master节点启动流程代码
 function master_launcher(){
 
-    echo_info "************************************************************************************"
-    echo_info "\t\t\t                                "
-    echo_info "\t\t\tMaster Port  : $MASTER_PORT     "
-    echo_info "\t\t\tSentinel HOST: $SENTINEL_HOST   "
-    echo_info "\t\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "\t\t\t                                "
-    echo_info "************************************************************************************"
+    echo_info "+--------------------------------------------------------------------+"
+    echo_info "|                                                                    |"
+    echo_info "|\t\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "|\t\t\tSentinel HOST: $SENTINEL_HOST   "
+    echo_info "|\t\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "|                                                                    |"
+    echo_info "+--------------------------------------------------------------------+"
 
     # 循环10次
     guard=0
@@ -100,14 +100,15 @@ function master_launcher(){
 # 哨兵模式 slave节点启动流程代码
 function slave_launcher(){
 
-    echo_info "************************************************************************************"
-    echo_info "\t\t\t                                "
-    echo_info "\t\t\tMaster Host  : $MASTER_HOST     "
-    echo_info "\t\t\tMaster Port  : $MASTER_PORT     "
-    echo_info "\t\t\tSentinel HOST: $SENTINEL_HOST   "
-    echo_info "\t\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "\t\t\t                                "
-    echo_info "************************************************************************************"
+    echo_info "+--------------------------------------------------------------------+"
+    echo_info "|                                                                    |"
+    echo_info "|\t\t\tMaster Host  : $MASTER_HOST     "
+    echo_info "|\t\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "|\t\t\tSentinel HOST: $SENTINEL_HOST   "
+    echo_info "|\t\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "|                                                                    |"
+    echo_info "+--------------------------------------------------------------------+"
+
 
     while true; do
         SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
@@ -147,17 +148,14 @@ function slave_launcher(){
 # 哨兵模式 哨兵节点启动流程代码
 function sentinel_launcher(){
 
-    log_info "Starting sentinels..."
-    echo -e "\n"
-
-    echo_info "************************************************************************************"
-    echo_info "\t\t\t                                "
-    echo_info "\t\t\tMaster Host  : $MASTER_HOST     "
-    echo_info "\t\t\tMaster Port  : $MASTER_PORT     "
-    echo_info "\t\t\tSentinel SVC : $SENTINEL_SVC    "
-    echo_info "\t\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "\t\t\t                                "
-    echo_info "************************************************************************************"
+    echo_info "+--------------------------------------------------------------------+"
+    echo_info "|                                                                    |"
+    echo_info "|\t\t\tMaster Host  : $MASTER_HOST     "
+    echo_info "|\t\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "|\t\t\tSentinel SVC : $SENTINEL_SVC    "
+    echo_info "|\t\t\tSentinel Port: $SENTINEL_PORT   "
+    echo_info "|                                                                    |"
+    echo_info "+--------------------------------------------------------------------+"
 
     MASTER_IP=""
     while true; do
@@ -224,13 +222,14 @@ function cluster_launcher(){
 
 # 集群模式 集群配置节点启动流程代码
 function cluster_ctrl_launcher(){
-    echo_info "************************************************************************************"
-    echo_info "\t\t\t                                "
-    echo_info "\t\t\tCLUSTER_SVC  : $CLUSTER_SVC     "
-    echo_info "\t\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
-    echo_info "\t\t\tREDIS_CLUSTER_SLAVE_QUANTUM  : $REDIS_CLUSTER_SLAVE_QUANTUM     "
-    echo_info "\t\t\t                                "
-    echo_info "************************************************************************************"
+
+    echo_info "+--------------------------------------------------------------------+"
+    echo_info "|                                                                    |"
+    echo_info "|\t\t\tCLUSTER_SVC  : $CLUSTER_SVC     "
+    echo_info "|\t\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
+    echo_info "|\t\t\tREDIS_CLUSTER_SLAVE_QUANTUM  : $REDIS_CLUSTER_SLAVE_QUANTUM     "
+    echo_info "|                                                                    |"
+    echo_info "+--------------------------------------------------------------------+"
 
     # 安装 redis-trib.rb 的依赖
 #    gem install rdoc
@@ -242,8 +241,8 @@ function cluster_ctrl_launcher(){
     while true ; do
         Listener=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".code")
         if [[ $Listener == "404" ]] ; then
-            echo_info ">>> Api server addr: ${API_SERVER_ADDR}"
-            echo_info ">>> Waiting Until the StatefulSet->sts-redis-cluster is Created... "
+            echo_info ">>> Api server address: ${API_SERVER_ADDR}"
+            echo_info ">>> Waiting Until the StatefulSet -> sts-redis-cluster is Created... "
             sleep 20
             continue
         else
@@ -256,7 +255,7 @@ function cluster_ctrl_launcher(){
 
     echo_info "+--------------------------------------------------------------------+"
     echo_info "|                                                                    |"
-    echo_info "|\t\tREPLICAS: $REPLICAS"
+    echo_error "|\t\t\tREPLICAS: $REPLICAS"
     echo_info "|                                                                    |"
     echo_info "+--------------------------------------------------------------------+"
 
@@ -265,7 +264,7 @@ function cluster_ctrl_launcher(){
     if test $REPLICAS -lt $CLUSER_POD_QUANTUM ; then
     #  这个情况下是因为组成不了集群,锁以直接报错退出
         log_error " We Need More Pods, please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet"
-        log_error "[IMPORTANT] =>   pod_replicas >= (slave_replicas + 1) * 3"
+        log_error "[IMPORTANT]   =>   pod_replicas >= (slave_replicas + 1) * 3"
         exit 1
     else
         log_info "[OK] Cluster Config OK..."
@@ -293,6 +292,13 @@ function cluster_ctrl_launcher(){
 
         log_info "index : $index "
         if test $index -ge $REPLICAS ; then
+            log_info ">>> Performing Check Recovery..."
+            RECOVERD=$(/code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT | jq ".code")
+            if test $RECOVERD == "0" ; then 
+                log_info ">>> Recover from the destruction"
+                break 
+            fi
+
             log_info ">>> Performing Build Redis Cluster..."
             if test $REDIS_CLUSTER_SLAVE_QUANTUM -eq 0 ;then
                 yes yes | head -1 | /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
@@ -400,15 +406,15 @@ if test $# -ne 0 ; then
 fi
 
 time=$(date "+%Y-%m-%d")
-echo_info "************************************************************************************"
-echo_info "\t\t\t"
-echo_info "\t\t\t Redis-in-Kubernetes"
-echo_info "\t\t\t Author: caiqyxyx"
-echo_info "\t\t\t Github: https://github.com/marscqy/redis-in-k8s"
-echo_info "\t\t\t Start Date: $time"
-echo_info "\t\t\t"
-echo_info "************************************************************************************"
 
+echo_info "+--------------------------------------------------------------------+"
+echo_info "|                                                                    |"
+echo_info "|\t\t\t Redis-in-Kubernetes"
+echo_info "|\t\t\t Author: caiqyxyx"
+echo_info "|\t\t\t Github: https://github.com/marscqy/redis-in-k8s"
+echo_info "|\t\t\t Start Date: $time"
+echo_info "|                                                                    |"
+echo_info "+--------------------------------------------------------------------+"
 
 if test ! -e /data/redis/master ; then
     mkdir -p /data/redis/master
