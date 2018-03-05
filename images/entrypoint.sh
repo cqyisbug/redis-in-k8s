@@ -252,10 +252,14 @@ function cluster_ctrl_launcher(){
 
     log_info ">>> Performing Cluster Config Check"
     REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
+    NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
+    HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
 
     echo_info "+--------------------------------------------------------------------+"
     echo_info "|                                                                    |"
     echo_error "|\t\t\tREPLICAS: $REPLICAS"
+    echo_error "|\t\t\tNODES: $NODES"
+    echo_error "|\t\t\tHOST_NETWORK: $HOST_NETWORK"
     echo_info "|                                                                    |"
     echo_info "+--------------------------------------------------------------------+"
 
@@ -265,6 +269,9 @@ function cluster_ctrl_launcher(){
     #  这个情况下是因为组成不了集群,锁以直接报错退出
         log_error " We Need More Pods, please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet"
         log_error "[IMPORTANT]   =>   pod_replicas >= (slave_replicas + 1) * 3"
+        exit 1
+    elif [[ $REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
+        log_error "We Need More Nodes,please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet or addd nodes "
         exit 1
     else
         log_info "[OK] Cluster Config OK..."
