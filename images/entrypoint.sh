@@ -80,6 +80,7 @@ function master_launcher(){
                 THIS_IP=$(hostname -i)
                 echo "slave-announce-ip $THIS_IP" >> /config/redis/slave.conf
                 echo "slave-announce-port $MASTER_PORT" >> /config/redis/slave.conf
+                echo "logfile /data/redis/redis.log" >> /config/redis/slave.conf
                 redis-server /config/redis/slave.conf --protected-mode no
                 break
             else
@@ -141,6 +142,7 @@ function slave_launcher(){
 
     echo "slave-announce-ip ${THIS_IP}" >> /config/redis/slave.conf
     echo "slave-announce-port $MASTER_PORT" >> /config/redis/slave.conf
+    echo "logfile /data/redis/redis.log" >> /config/redis/slave.conf
 
     redis-server  /config/redis/slave.conf --protected-mode no
 }
@@ -199,6 +201,7 @@ function sentinel_launcher(){
     echo "sentinel failover-timeout mymaster 180000" >> ${sentinel_conf}
     echo "sentinel parallel-syncs mymaster 1" >> ${sentinel_conf}
     echo "bind $(hostname -i) 127.0.0.1" >> ${sentinel_conf}
+    echo "logfile /data/redis/redis.log" >> ${sentinel_conf}
 
     redis-sentinel ${sentinel_conf} --protected-mode no
 }
@@ -216,6 +219,8 @@ function cluster_launcher(){
 
     echo "cluster-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
     echo "cluster-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
+
+    echo "logfile /data/redis/redis.log" >> /config/redis/cluster.conf
 
     redis-server /config/redis/cluster.conf --protected-mode no
 }
