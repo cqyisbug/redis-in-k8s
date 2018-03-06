@@ -25,6 +25,10 @@ spec:
           value: "26379"
         - name: MASTER_PORT
           value: "6379"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         ports:
         - containerPort: 6379
         volumeMounts:

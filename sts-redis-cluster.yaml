@@ -21,6 +21,10 @@ spec:
           value: "true"
         - name: REDIS_PORT
           value: "6380"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         ports:
         - containerPort: 6380
         volumeMounts:

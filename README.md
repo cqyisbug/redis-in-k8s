@@ -20,7 +20,6 @@ docker build -t $YOUR_TAG .
 
 k8s_installer 是一个在单节点上安装kubernetes的脚本。使用这个脚本你首先得能连网，因为我没有把其中的rpm包全部下载下来。
 
-
 redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后续我会优化。
 
 https://github.com/marscqy/redisscript 这是一个python脚本,使用方法仅供参考,Redis.py 中包含了 三个重要函数,分别是install_redis  check_redis scale_redis,用来安装 检查 扩容redis集群
@@ -113,7 +112,6 @@ reids-trib.rb check --health
     ``` 
 - 当使用redis集群模式的时候，动态扩容问题？
     -  这个问题已经在2018-02-02 解决,缩容不支持,只支持扩容
-
 -----
 
 ### 在K8S中的性能损耗

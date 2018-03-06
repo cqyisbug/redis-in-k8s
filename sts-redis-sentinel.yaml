@@ -29,5 +29,9 @@ spec:
           value: "26379"
         - name: SENTINEL_SVC
           value: svc-redis-sentinel
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         ports:
         - containerPort: 26379

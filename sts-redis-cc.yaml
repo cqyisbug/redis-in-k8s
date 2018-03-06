@@ -27,5 +27,9 @@ spec:
           value: "172.20.0.12:8080"
         - name: REDIS_PORT
           value: "6380"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         ports:
         - containerPort: 6380
