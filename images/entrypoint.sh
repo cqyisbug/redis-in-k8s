@@ -343,7 +343,7 @@ function cluster_ctrl_launcher(){
             if test $NEW_REPLICAS -eq $REPLICAS ;then
                 log_info ">>> Performing Check Redis Cluster..."
                 /code/redis/redis-trib.rb check $CLUSTER_NODE:$REDIS_PORT
-                sleep 120
+                sleep 180
             else
                 log_info ">>> Performing Add Node To The Redis Cluster"
                 while true ; do
