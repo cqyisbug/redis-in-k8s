@@ -208,16 +208,32 @@ function sentinel_launcher(){
 
 # 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
+    # log_info "Starting cluster ..."
+
+    # THIS_IP=$(hostname -i)
+    # echo "port ${REDIS_PORT}" >> /config/redis/cluster.conf
+    # echo "bind $(hostname -i) 127.0.0.1 " >> /config/redis/cluster.conf
+
+    # echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
+    # echo "slave-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
+
+    # echo "cluster-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
+    # echo "cluster-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
+
+    # echo "logfile /data/redis/redis.log" >> /config/redis/cluster.conf
+
+    # redis-server /config/redis/cluster.conf --protected-mode no
+
+    # use k8s environment
     log_info "Starting cluster ..."
 
-    THIS_IP=$(hostname -i)
     echo "port ${REDIS_PORT}" >> /config/redis/cluster.conf
-    echo "bind $(hostname -i) 127.0.0.1 " >> /config/redis/cluster.conf
+    echo "bind ${MY_POD_IP} 127.0.0.1 " >> /config/redis/cluster.conf
 
-    echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
+    echo "slave-announce-ip ${MY_POD_IP}" >> /config/redis/cluster.conf
     echo "slave-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
 
-    echo "cluster-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
+    echo "cluster-announce-ip ${MY_POD_IP}" >> /config/redis/cluster.conf
     echo "cluster-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
 
     echo "logfile /data/redis/redis.log" >> /config/redis/cluster.conf
@@ -232,13 +248,11 @@ function cluster_ctrl_launcher(){
     echo_info "|                                                                    |"
     echo_info "|\t\t\tCLUSTER_SVC  : $CLUSTER_SVC     "
     echo_info "|\t\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
-    echo_info "|\t\t\tREDIS_CLUSTER_SLAVE_QUANTUM  : $REDIS_CLUSTER_SLAVE_QUANTUM     "
+    echo_info "|\t\t\tREDIS_CLUSTER_SLAVE_QUANTUM  : $REDIS_CLUSTER_SLAVE_QUANTUM    "
     echo_info "|                                                                    |"
     echo_info "+--------------------------------------------------------------------+"
 
     # 安装 redis-trib.rb 的依赖
-#    gem install rdoc
-#    gem install redis --version=4.0.1
     gem install --local /rdoc-600.gem
     gem install --local /redis-401.gem
 
@@ -262,9 +276,9 @@ function cluster_ctrl_launcher(){
 
     echo_info "+--------------------------------------------------------------------+"
     echo_info "|                                                                    |"
-    echo_error "|\t\t\tREPLICAS: $REPLICAS"
-    echo_error "|\t\t\tNODES: $NODES"
-    echo_error "|\t\t\tHOST_NETWORK: $HOST_NETWORK"
+    echo_info "|\t\t\tREPLICAS: $REPLICAS"
+    echo_info "|\t\t\tNODES: $NODES"
+    echo_info "|\t\t\tHOST_NETWORK: $HOST_NETWORK"
     echo_info "|                                                                    |"
     echo_info "+--------------------------------------------------------------------+"
 
