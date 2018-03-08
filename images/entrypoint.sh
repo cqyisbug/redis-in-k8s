@@ -227,6 +227,12 @@ function cluster_launcher(){
     # use k8s environment
     log_info "Starting cluster ..."
 
+    if test -f "/data/redis/nodes.conf.bak" ; then 
+        echo "oh~,Old nodes.conf exists"
+        rm -f /data/redis/nodes.conf
+        mv /data/redis/nodes.conf.bak /data/redis/nodes.conf
+    fi
+
     echo "port ${REDIS_PORT}" >> /config/redis/cluster.conf
     echo "bind ${MY_POD_IP} 127.0.0.1 " >> /config/redis/cluster.conf
 
@@ -239,6 +245,16 @@ function cluster_launcher(){
     echo "logfile /data/redis/redis.log" >> /config/redis/cluster.conf
 
     redis-server /config/redis/cluster.conf --protected-mode no
+
+    while true ; do 
+        CLUSTER_CHECK_RESULT=$(/code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
+        if test $CLUSTER_CHECK_RESULT == "0" ; then 
+            log_info ">>> Back up nodes.conf"
+            rm -f /data/redis/nodes.conf.bak
+            cp /data/redis/nodes.conf /data/redis/nodes.conf.bak
+        fi
+        sleep 10
+    done
 }
 
 # 集群模式 集群配置节点启动流程代码
@@ -252,11 +268,6 @@ function cluster_ctrl_launcher(){
     echo_info "|                                                                    |"
     echo_info "+--------------------------------------------------------------------+"
 
-    # 安装 redis-trib.rb 的依赖
-    gem install --local /rdoc-600.gem
-    gem install --local /redis-401.gem
-
-
     while true ; do
         Listener=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".code")
         if [[ $Listener == "404" ]] ; then
@@ -269,36 +280,65 @@ function cluster_ctrl_launcher(){
         fi
     done
 
-    log_info ">>> Performing Cluster Config Check"
-    REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
-    NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
-    HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
+    # log_info ">>> Performing Cluster Config Check"
+    # REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
+    # NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
+    # HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
 
-    echo_info "+--------------------------------------------------------------------+"
-    echo_info "|                                                                    |"
-    echo_info "|\t\t\tREPLICAS: $REPLICAS"
-    echo_info "|\t\t\tNODES: $NODES"
-    echo_info "|\t\t\tHOST_NETWORK: $HOST_NETWORK"
-    echo_info "|                                                                    |"
-    echo_info "+--------------------------------------------------------------------+"
+    # echo_info "+--------------------------------------------------------------------+"
+    # echo_info "|                                                                    |"
+    # echo_info "|\t\t\tREPLICAS: $REPLICAS"
+    # echo_info "|\t\t\tNODES: $NODES"
+    # echo_info "|\t\t\tHOST_NETWORK: $HOST_NETWORK"
+    # echo_info "|                                                                    |"
+    # echo_info "+--------------------------------------------------------------------+"
 
 
-    let CLUSER_POD_QUANTUM=REDIS_CLUSTER_SLAVE_QUANTUM*3+3
-    if test $REPLICAS -lt $CLUSER_POD_QUANTUM ; then
-    #  这个情况下是因为组成不了集群,锁以直接报错退出
-        log_error " We Need More Pods, please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet"
-        log_error "[IMPORTANT]   =>   pod_replicas >= (slave_replicas + 1) * 3"
-        exit 1
-    elif [[ $REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
-        log_error "We Need More Nodes,please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet or addd nodes "
-        exit 1
-    else
-        log_info "[OK] Cluster Config OK..."
-    fi
+    # let CLUSER_POD_QUANTUM=REDIS_CLUSTER_SLAVE_QUANTUM*3+3
+    # if test $REPLICAS -lt $CLUSER_POD_QUANTUM ; then
+    # #  这个情况下是因为组成不了集群,所以直接报错退出
+    #     log_error " We Need More Pods, please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet"
+    #     log_error "[IMPORTANT]   =>   pod_replicas >= (slave_replicas + 1) * 3"
+    #     exit 1
+    # elif [[ $REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
+    #     log_error "We Need More Nodes,please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet or addd nodes "
+    #     exit 1
+    # else
+    #     log_info "[OK] Cluster Config OK..."
+    # fi
 
-    log_info ">>> Performing Redis Cluster Pod Check..."
+    # log_info ">>> Performing Redis Cluster Pod Check..."
 
     while true; do
+        
+        log_info ">>> Performing Cluster Config Check"
+        REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
+        NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
+        HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
+
+        echo_info "+--------------------------------------------------------------------+"
+        echo_info "|                                                                    |"
+        echo_info "|\t\t\tREPLICAS: $REPLICAS"
+        echo_info "|\t\t\tNODES: $NODES"
+        echo_info "|\t\t\tHOST_NETWORK: $HOST_NETWORK"
+        echo_info "|                                                                    |"
+        echo_info "+--------------------------------------------------------------------+"
+
+        let CLUSER_POD_QUANTUM=REDIS_CLUSTER_SLAVE_QUANTUM*3+3
+        if test $REPLICAS -lt $CLUSER_POD_QUANTUM ; then
+        #  这个情况下是因为组成不了集群,所以直接报错退出
+            log_error " We Need More Pods, please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet"
+            log_error "[IMPORTANT]   =>   pod_replicas >= (slave_replicas + 1) * 3"
+            exit 1
+        elif [[ $REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
+            log_error "We Need More Nodes,please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet or addd nodes "
+            exit 1
+        else
+            log_info "[OK] Cluster Config OK..."
+        fi
+
+        log_info ">>> Performing Redis Cluster Pod Check..."
+
         IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
         log_info "Ready Pod IP : $IP_ARRAY"
         CLUSTER_CONFIG=""
@@ -317,7 +357,7 @@ function cluster_ctrl_launcher(){
         done
 
         log_info "index : $index "
-        if test $index -ge $REPLICAS ; then
+        if test $index -eq $REPLICAS ; then
             log_info ">>> Performing Check Recovery..."
             RECOVERD=$(/code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT | jq ".code")
             if test $RECOVERD == "0" ; then 
@@ -335,7 +375,7 @@ function cluster_ctrl_launcher(){
             break
         else
             log_info "Waiting for all pod to be ready! Sleep 5 secs..."
-            sleep 5
+            sleep 10
             continue
         fi
     done
@@ -441,6 +481,10 @@ echo_info "|\t\t\t Github: https://github.com/marscqy/redis-in-k8s"
 echo_info "|\t\t\t Start Date: $time"
 echo_info "|                                                                    |"
 echo_info "+--------------------------------------------------------------------+"
+
+# 安装 redis-trib.rb 的依赖
+gem install --local /rdoc-600.gem
+gem install --local /redis-401.gem
 
 if test ! -e /data/redis/master ; then
     mkdir -p /data/redis/master
