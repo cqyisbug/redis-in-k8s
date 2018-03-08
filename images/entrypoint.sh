@@ -229,8 +229,8 @@ function cluster_launcher(){
 
     if test -f "/data/redis/nodes.conf.bak" ; then 
         echo "oh~,Old nodes.conf exists"
-        rm -f /data/redis/nodes.conf
-        mv /data/redis/nodes.conf.bak /data/redis/nodes.conf
+        rm -f /data/redis/cluster/nodes.conf
+        mv /data/redis/cluster/nodes.conf.bak /data/redis/cluster/nodes.conf
     fi
 
     echo "port ${REDIS_PORT}" >> /config/redis/cluster.conf
@@ -242,7 +242,7 @@ function cluster_launcher(){
     echo "cluster-announce-ip ${MY_POD_IP}" >> /config/redis/cluster.conf
     echo "cluster-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
 
-    echo "logfile /data/redis/redis.log" >> /config/redis/cluster.conf
+    echo "logfile /data/redis/cluster/redis.log" >> /config/redis/cluster.conf
 
     redis-server /config/redis/cluster.conf --protected-mode no
 
@@ -250,8 +250,8 @@ function cluster_launcher(){
         CLUSTER_CHECK_RESULT=$(/code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
         if test $CLUSTER_CHECK_RESULT == "0" ; then 
             log_info ">>> Back up nodes.conf"
-            rm -f /data/redis/nodes.conf.bak
-            cp /data/redis/nodes.conf /data/redis/nodes.conf.bak
+            rm -f /data/redis/cluster/nodes.conf.bak
+            cp /data/redis/cluster/nodes.conf /data/redis/cluster/nodes.conf.bak
         fi
         sleep 10
     done
