@@ -227,7 +227,7 @@ function cluster_launcher(){
     # use k8s environment
     log_info "Starting cluster ..."
 
-    if test -f "/data/redis/nodes.conf.bak" ; then 
+    if test -f "/data/redis/cluster/nodes.conf.bak" ; then 
         echo "oh~,Old nodes.conf exists"
         rm -f /data/redis/cluster/nodes.conf
         mv /data/redis/cluster/nodes.conf.bak /data/redis/cluster/nodes.conf
