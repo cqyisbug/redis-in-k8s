@@ -63,6 +63,18 @@ function master_launcher(){
     echo_info "|                                                                    |"
     echo_info "+--------------------------------------------------------------------+"
 
+    if test -f "/config/redis/slave.conf" ; then
+        cp /config/redis/slave.conf /data/redis/slave.conf
+    else
+        log_error "Sorry , I cant find file -> /config/redis/slave.conf"
+    fi
+
+    if test -f "/config/redis/master.conf" ; then
+        cp /config/redis/master.conf /data/redis/master.conf
+    else
+        log_error "Sorry , I cant find file -> /config/redis/master.conf"
+    fi
+
     # 循环10次
     guard=0
     while test $guard -lt 10 ; do
@@ -109,6 +121,12 @@ function slave_launcher(){
     echo_info "|\t\t\tSentinel Port: $SENTINEL_PORT   "
     echo_info "|                                                                    |"
     echo_info "+--------------------------------------------------------------------+"
+
+    if test -f "/config/redis/slave.conf" ; then
+        cp /config/redis/slave.conf /data/redis/slave.conf
+    else
+        log_error "Sorry , I cant find file -> /config/redis/slave.conf"
+    fi
 
 
     while true; do
