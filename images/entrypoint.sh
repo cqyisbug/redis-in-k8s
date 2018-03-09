@@ -73,15 +73,15 @@ function master_launcher(){
             # 通过哨兵找到master，验证master是否正确
             redis-cli -h $MASTER_IP -p $MASTER_PORT INFO
             if test "$?" == "0" ; then
-                sed -i "s/%master-ip%/$MASTER_IP/" /config/redis/slave.conf
-                sed -i "s/%master-port%/$MASTER_PORT/" /config/redis/slave.conf
-                PERSISTENT_PATH="/data/redis/master"
-                sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
+                sed -i "s/%master-ip%/$MASTER_IP/" /data/redis/slave.conf
+                sed -i "s/%master-port%/$MASTER_PORT/" /data/redis/slave.conf
+                PERSISTENT_PATH="/data/redis"
+                sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /data/redis/slave.conf
                 THIS_IP=$(hostname -i)
-                echo "slave-announce-ip $THIS_IP" >> /config/redis/slave.conf
-                echo "slave-announce-port $MASTER_PORT" >> /config/redis/slave.conf
-                echo "logfile /data/redis/redis.log" >> /config/redis/slave.conf
-                redis-server /config/redis/slave.conf --protected-mode no
+                echo "slave-announce-ip $THIS_IP" >> /data/redis/slave.conf
+                echo "slave-announce-port $MASTER_PORT" >> /data/redis/slave.conf
+                echo "logfile /data/redis/redis.log" >> /data/redis/slave.conf
+                redis-server /data/redis/slave.conf --protected-mode no
                 break
             else
                 log_error "Can not connect to Master . Waiting...."
@@ -91,7 +91,7 @@ function master_launcher(){
         # 如果循环了多次，都没有找到，那么就放弃啦，再来一轮寻找
         if test $guard -ge 10 ; then
             log_info "Starting master ...."
-            redis-server /config/redis/master.conf --protected-mode no
+            redis-server /data/redis/master.conf --protected-mode no
             break
         fi
         sleep 2
@@ -135,16 +135,16 @@ function slave_launcher(){
 
     THIS_IP=$(hostname -i)
 
-    sed -i "s/%master-ip%/${MASTER_IP}/" /config/redis/slave.conf
-    sed -i "s/%master-port%/${MASTER_PORT}/" /config/redis/slave.conf
+    sed -i "s/%master-ip%/${MASTER_IP}/" /data/redis/slave.conf
+    sed -i "s/%master-port%/${MASTER_PORT}/" /data/redis/slave.conf
     PERSISTENT_PATH="/data/redis/slave"
-    sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /config/redis/slave.conf
+    sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /data/redis/slave.conf
 
-    echo "slave-announce-ip ${THIS_IP}" >> /config/redis/slave.conf
-    echo "slave-announce-port $MASTER_PORT" >> /config/redis/slave.conf
-    echo "logfile /data/redis/redis.log" >> /config/redis/slave.conf
+    echo "slave-announce-ip ${THIS_IP}" >> /data/redis/slave.conf
+    echo "slave-announce-port $MASTER_PORT" >> /data/redis/slave.conf
+    echo "logfile /data/redis/redis.log" >> /data/redis/slave.conf
 
-    redis-server  /config/redis/slave.conf --protected-mode no
+    redis-server  /data/redis/slave.conf --protected-mode no
 }
 
 # 哨兵模式 哨兵节点启动流程代码
@@ -193,7 +193,7 @@ function sentinel_launcher(){
 
     log_info "Master: $MASTER_IP"
 
-    sentinel_conf=/config/redis/sentinel.conf
+    sentinel_conf=/data/redis/sentinel.conf
 
     echo "port $SENTINEL_PORT" >> ${sentinel_conf}
     echo "sentinel monitor mymaster ${MASTER_IP} ${MASTER_PORT} 2" >> ${sentinel_conf}
@@ -208,50 +208,49 @@ function sentinel_launcher(){
 
 # 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
-    # log_info "Starting cluster ..."
-
-    # THIS_IP=$(hostname -i)
-    # echo "port ${REDIS_PORT}" >> /config/redis/cluster.conf
-    # echo "bind $(hostname -i) 127.0.0.1 " >> /config/redis/cluster.conf
-
-    # echo "slave-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
-    # echo "slave-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
-
-    # echo "cluster-announce-ip ${THIS_IP}" >> /config/redis/cluster.conf
-    # echo "cluster-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
-
-    # echo "logfile /data/redis/redis.log" >> /config/redis/cluster.conf
-
-    # redis-server /config/redis/cluster.conf --protected-mode no
-
     # use k8s environment
     log_info "Starting cluster ..."
 
-    if test -f "/data/redis/cluster/nodes.conf.bak" ; then 
-        echo "oh~,Old nodes.conf exists"
-        rm -f /data/redis/cluster/nodes.conf
-        mv /data/redis/cluster/nodes.conf.bak /data/redis/cluster/nodes.conf
+    if test -f "/config/redis/cluster.conf" ; then
+        cp /config/redis/cluster.conf /data/redis/cluster.conf
+    else
+        log_error "Sorry , I cant find file -> /config/redis/cluster.conf"
     fi
 
-    echo "port ${REDIS_PORT}" >> /config/redis/cluster.conf
-    echo "bind ${MY_POD_IP} 127.0.0.1 " >> /config/redis/cluster.conf
+    if test -f "/data/redis/nodes.conf.bak" ; then 
+        log_info "oh~,Old nodes.conf exists"
+        cat /data/redis/nodes.conf.bak
+        #rm -f /data/redis/nodes.conf
+        mv /data/redis/nodes.conf.bak /data/redis/nodes.conf
+    else
+        log_info "no nodes.conf found"
+    fi
 
-    echo "slave-announce-ip ${MY_POD_IP}" >> /config/redis/cluster.conf
-    echo "slave-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
+    echo "port ${REDIS_PORT}" >> /data/redis/cluster.conf
+    echo "bind ${MY_POD_IP} 127.0.0.1 " >> /data/redis/cluster.conf
+    echo "daemonize yes" >> /data/redis/cluster.conf
 
-    echo "cluster-announce-ip ${MY_POD_IP}" >> /config/redis/cluster.conf
-    echo "cluster-announce-port ${REDIS_PORT}" >> /config/redis/cluster.conf
+    echo "slave-announce-ip ${MY_POD_IP}" >> /data/redis/cluster.conf
+    echo "slave-announce-port ${REDIS_PORT}" >> /data/redis/cluster.conf
 
-    echo "logfile /data/redis/cluster/redis.log" >> /config/redis/cluster.conf
+    echo "cluster-announce-ip ${MY_POD_IP}" >> /data/redis/cluster.conf
+    echo "cluster-announce-port ${REDIS_PORT}" >> /data/redis/cluster.conf
 
-    redis-server /config/redis/cluster.conf --protected-mode no
+    echo "logfile /data/redis/redis.log" >> /data/redis/cluster.conf
+
+    redis-server /data/redis/cluster.conf --protected-mode no
 
     while true ; do 
         CLUSTER_CHECK_RESULT=$(/code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
+        if $($CLUSTER_CHECK_RESULT | wc -L) != "1" ; then
+            continue
+        fi
+
+        log_info ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         if test $CLUSTER_CHECK_RESULT == "0" ; then 
             log_info ">>> Back up nodes.conf"
-            rm -f /data/redis/cluster/nodes.conf.bak
-            cp /data/redis/cluster/nodes.conf /data/redis/cluster/nodes.conf.bak
+            rm -f /data/redis/nodes.conf.bak
+            cp /data/redis/nodes.conf /data/redis/nodes.conf.bak
         fi
         sleep 10
     done
@@ -279,35 +278,6 @@ function cluster_ctrl_launcher(){
             break
         fi
     done
-
-    # log_info ">>> Performing Cluster Config Check"
-    # REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
-    # NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
-    # HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
-
-    # echo_info "+--------------------------------------------------------------------+"
-    # echo_info "|                                                                    |"
-    # echo_info "|\t\t\tREPLICAS: $REPLICAS"
-    # echo_info "|\t\t\tNODES: $NODES"
-    # echo_info "|\t\t\tHOST_NETWORK: $HOST_NETWORK"
-    # echo_info "|                                                                    |"
-    # echo_info "+--------------------------------------------------------------------+"
-
-
-    # let CLUSER_POD_QUANTUM=REDIS_CLUSTER_SLAVE_QUANTUM*3+3
-    # if test $REPLICAS -lt $CLUSER_POD_QUANTUM ; then
-    # #  这个情况下是因为组成不了集群,所以直接报错退出
-    #     log_error " We Need More Pods, please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet"
-    #     log_error "[IMPORTANT]   =>   pod_replicas >= (slave_replicas + 1) * 3"
-    #     exit 1
-    # elif [[ $REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
-    #     log_error "We Need More Nodes,please reset the \"replicas\" in  sts-redis-cluster.yaml and recreate the StatefulSet or addd nodes "
-    #     exit 1
-    # else
-    #     log_info "[OK] Cluster Config OK..."
-    # fi
-
-    # log_info ">>> Performing Redis Cluster Pod Check..."
 
     while true; do
         
@@ -360,9 +330,13 @@ function cluster_ctrl_launcher(){
         if test $index -eq $REPLICAS ; then
             log_info ">>> Performing Check Recovery..."
             RECOVERD=$(/code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT | jq ".code")
-            if test $RECOVERD == "0" ; then 
-                log_info ">>> Recover from the destruction"
-                break 
+            if $($RECOVERD | wc -L) != "1" ; then
+                continue
+            else
+                if test $RECOVERD == "0" ; then 
+                    log_info ">>> Recover from the destruction"
+                    break 
+                fi
             fi
 
             log_info ">>> Performing Build Redis Cluster..."
@@ -485,18 +459,6 @@ echo_info "+--------------------------------------------------------------------
 # 安装 redis-trib.rb 的依赖
 gem install --local /rdoc-600.gem
 gem install --local /redis-401.gem
-
-if test ! -e /data/redis/master ; then
-    mkdir -p /data/redis/master
-fi
-
-if test ! -e /data/redis/slave ; then
-    mkdir -p /data/redis/slave
-fi
-
-if test ! -e /data/redis/cluster ; then
-    mkdir -p /data/redis/cluster
-fi
 
 if [[ $MASTER == "true" ]] ; then
     master_launcher
