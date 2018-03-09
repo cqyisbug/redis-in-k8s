@@ -137,8 +137,6 @@ function slave_launcher(){
         else
             sleep 2
             continue
-#            echo_info "Could not find sentinel nodes. direct to master node"
-#            MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
         fi
 
         # 先从sentinel节点查找主节点信息，如果实在没有就直接从master节点找
@@ -260,7 +258,8 @@ function cluster_launcher(){
 
     while true ; do 
         CLUSTER_CHECK_RESULT=$(/code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
-        if $($CLUSTER_CHECK_RESULT | wc -L) != "1" ; then
+        RESULT_LENGTH=$(echo $CLUSTER_CHECK_RESULT | wc -L)
+        if test $RESULT_LENGTH != "1" ; then
             continue
         fi
 
@@ -348,7 +347,8 @@ function cluster_ctrl_launcher(){
         if test $index -eq $REPLICAS ; then
             log_info ">>> Performing Check Recovery..."
             RECOVERD=$(/code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT | jq ".code")
-            if $($RECOVERD | wc -L) != "1" ; then
+            RESULT_LENGTH=$(echo $RECOVERD | wc -L)
+            if test $RESULT_LENGTH != "1" ; then
                 continue
             else
                 if test $RECOVERD == "0" ; then 
