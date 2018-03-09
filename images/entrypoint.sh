@@ -256,10 +256,20 @@ function cluster_launcher(){
 
     redis-server /data/redis/cluster.conf --protected-mode no
 
+    index=0
     while true ; do 
+        if test $index == "6" ; then
+            redis-cli -p $REDIS_PORT shutdown
+            cluster_launcher
+            break
+        fi
+
         CLUSTER_CHECK_RESULT=$(/code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
         RESULT_LENGTH=$(echo $CLUSTER_CHECK_RESULT | wc -L)
         if test $RESULT_LENGTH != "1" ; then
+            redis-cli -p $REDIS_PORT
+            let index++
+            sleep 10
             continue
         fi
 
