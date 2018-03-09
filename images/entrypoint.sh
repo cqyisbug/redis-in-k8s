@@ -237,7 +237,7 @@ function cluster_launcher(){
         log_info "oh~,Old nodes.conf exists"
         cat /data/redis/nodes.conf.bak
         #rm -f /data/redis/nodes.conf
-        mv /data/redis/nodes.conf.bak /data/redis/nodes.conf
+        echo y | cp /data/redis/nodes.conf.bak /data/redis/nodes.conf
     else
         log_info "no nodes.conf found"
     fi
@@ -266,8 +266,8 @@ function cluster_launcher(){
         log_info ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         if test $CLUSTER_CHECK_RESULT == "0" ; then 
             log_info ">>> Back up nodes.conf"
-            rm -f /data/redis/nodes.conf.bak
-            cp /data/redis/nodes.conf /data/redis/nodes.conf.bak
+            #rm -f /data/redis/nodes.conf.bak
+            echo y | cp /data/redis/nodes.conf /data/redis/nodes.conf.bak
         fi
         sleep 10
     done
