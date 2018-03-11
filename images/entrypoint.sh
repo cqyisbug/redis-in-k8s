@@ -224,6 +224,15 @@ function sentinel_launcher(){
 
 # 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
+    if test -f "/data/redis/locate.log" ; then
+        OLD_IP=$(cat /data/redis/locate.log)
+        if test $MY_POD_IP != $OLD_IP ; then
+            exit 0
+        fi
+    else
+        echo ${MY_POD_IP} > /data/redis/locate.log
+    fi
+
     # use k8s environment
     log_info "Starting cluster ..."
 
