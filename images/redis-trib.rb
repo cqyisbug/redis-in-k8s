@@ -394,8 +394,11 @@ class RedisTrib
             keys = 0
             @nodes.each {|n|
                 show_node_detail(n)
-                masters += 1
-                keys += n.r.dbsize
+                if n.has_flag?("master")
+                    masters += 1
+                    keys += n.r.dbsize
+                end
+                
             }
             xputs "[OK] #{keys} keys in #{masters} masters."
             keys_per_slot = sprintf("%.2f", keys / 16384.0)
