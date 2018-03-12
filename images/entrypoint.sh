@@ -52,6 +52,56 @@ function log_error(){
 }
 
 
+function ip_array_length(){
+    ips=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
+    index=0
+    for ip in $ips ;
+    do
+        let index++
+    done
+    echo $index
+}
+
+# 获取指定statefulset 下的副本数
+function get_replicas(){
+    replicas=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/$1 | jq ".spec.replicas")
+    echo $replicas
+}
+
+# 等待指定的statefulset 下的所有的pod启动完毕
+function wait_all_pod_ready(){
+    while true ; do
+        ready_ip_length=$(ip_array_length) 
+        replicas=$(get_replicas $1)   
+
+        echo_info ""
+        echo_info "\t\t\tIP_ARRAY_LENGTH  : $ready_ip_length     "
+        echo_info "\t\t\tREPLICAS  : $replicas     "
+        echo_info ""
+
+        if test $ready_ip_length == $replicas ; then
+            log_info "[OK] Pod Ready!!!"
+            break
+        else
+            sleep 10
+        fi  
+    done
+}
+
+# 保存ip和pod名字的对应关系
+function save_relation(){
+    file=$1
+    REPLICAS=$(get_replicas "sts-redis-cluster")
+    rm -f /data/redis/cluster-$file.ip
+    index=0
+    while test $index -lt $REPLICAS ; do
+        curl -s ${API_SERVER_ADDR}/api/v1/namespaces/default/pods/sts-redis-cluster-$index | jq ".status.podIP"  >> /data/redis/cluster-$file.ip 
+        let index++
+    done
+    sed -i "s/\"//g" /data/redis/cluster-$file.ip
+}
+
+
 # 哨兵模式 master节点启动流程代码
 function master_launcher(){
 
@@ -224,15 +274,45 @@ function sentinel_launcher(){
 
 # 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
-    if test -f "/data/redis/locate.log" ; then
-        OLD_IP=$(cat /data/redis/locate.log)
-        if test $MY_POD_IP != $OLD_IP ; then
-            exit 0
-        fi
-    else
-        echo ${MY_POD_IP} > /data/redis/locate.log
-    fi
+    # 等待并保存ip和pod的关系
+    wait_all_pod_ready "sts-redis-cluster"
+    save_relation "new"
 
+    # 如果有旧的关系文件,那么就对nodes.conf进行替换
+    
+    if test -f /data/redis/cluster-old.ip ; then
+        if test -f "/data/redis/nodes.conf" ; then 
+            
+            echo_info "+-------------------------OLD IP CONFIG MAP--------------------------+"
+            cat /data/redis/cluster-old.ip
+            echo_info "+-------------------------NEW IP CONFIG MAP--------------------------+"
+            cat /data/redis/cluster-new.ip
+            echo_info "+-------------------------OLD CLUSTER NODE---------------------------+"
+            cat /data/redis/nodes.conf
+            
+            index=0
+            cat /data/redis/cluster-old.ip | while read oldip 
+            do
+                # newip=$(sed -n "$index"p /data/redis/cluster-new.ip)
+                sed -i "s/${oldip}/pod${index}/g" /data/redis/nodes.conf
+                let index++
+            done
+
+            index=0
+            cat /data/redis/cluster-new.ip | while read newip 
+            do
+                # newip=$(sed -n "$index"p /data/redis/cluster-new.ip)
+                sed -i "s/pod${index}/${newip}/g" /data/redis/nodes.conf
+                let index++
+            done
+            
+            
+            echo_info "+-------------------------NEW CLUSTER NODE---------------------------+"
+            cat /data/redis/nodes.conf
+        else
+            log_error "[ERROR] something wrong with presistent"
+        fi
+    fi
     # use k8s environment
     log_info "Starting cluster ..."
 
@@ -240,15 +320,6 @@ function cluster_launcher(){
         cp /config/redis/cluster.conf /data/redis/cluster.conf
     else
         log_error "Sorry , I cant find file -> /config/redis/cluster.conf"
-    fi
-
-    if test -f "/data/redis/nodes.conf.bak" ; then 
-        log_info "oh~,Old nodes.conf exists"
-        cat /data/redis/nodes.conf.bak
-        #rm -f /data/redis/nodes.conf
-        echo y | cp /data/redis/nodes.conf.bak /data/redis/nodes.conf
-    else
-        log_info "no nodes.conf found"
     fi
 
     echo "port ${REDIS_PORT}" >> /data/redis/cluster.conf
@@ -265,19 +336,10 @@ function cluster_launcher(){
 
     redis-server /data/redis/cluster.conf --protected-mode no
 
-    index=0
     while true ; do 
-        if test $index == "6" ; then
-            redis-cli -p $REDIS_PORT shutdown
-            cluster_launcher
-            break
-        fi
-
         CLUSTER_CHECK_RESULT=$(/code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
         RESULT_LENGTH=$(echo $CLUSTER_CHECK_RESULT | wc -L)
         if test $RESULT_LENGTH != "1" ; then
-            redis-cli -p $REDIS_PORT
-            let index++
             sleep 10
             continue
         fi
@@ -285,8 +347,7 @@ function cluster_launcher(){
         log_info ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         if test $CLUSTER_CHECK_RESULT == "0" ; then 
             log_info ">>> Back up nodes.conf"
-            #rm -f /data/redis/nodes.conf.bak
-            echo y | cp /data/redis/nodes.conf /data/redis/nodes.conf.bak
+            save_relation "old"
         fi
         sleep 10
     done
@@ -346,7 +407,7 @@ function cluster_ctrl_launcher(){
         log_info ">>> Performing Redis Cluster Pod Check..."
 
         IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
-        log_info "Ready Pod IP : $IP_ARRAY"
+        # log_info "Ready Pod IP : $IP_ARRAY"
         CLUSTER_CONFIG=""
         index=0
         for ip in $IP_ARRAY ;
@@ -357,7 +418,7 @@ function cluster_ctrl_launcher(){
                 break
             fi
             CLUSTER_CONFIG=${ip}":${REDIS_PORT} "${CLUSTER_CONFIG}
-            log_info "Cluster config : $CLUSTER_CONFIG"
+            # log_info "Cluster config : $CLUSTER_CONFIG"
             CLUSTER_NODE=${ip}
             let index++
         done

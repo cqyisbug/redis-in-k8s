@@ -21,6 +21,10 @@ spec:
           value: "true"
         - name: REDIS_PORT
           value: "6380"
+        - name: CLUSTER_SVC
+          value: "svc-redis-cluster"
+        - name: API_SERVER_ADDR
+          value: "172.20.0.12:8080"
         - name: MY_POD_IP
           valueFrom:
             fieldRef:
