@@ -337,7 +337,7 @@ function cluster_launcher(){
     redis-server /data/redis/cluster.conf --protected-mode no
 
     while true ; do 
-        CLUSTER_CHECK_RESULT=$(/code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
+        CLUSTER_CHECK_RESULT=$(ruby /code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
         RESULT_LENGTH=$(echo $CLUSTER_CHECK_RESULT | wc -L)
         if test $RESULT_LENGTH != "1" ; then
             sleep 10
@@ -426,7 +426,7 @@ function cluster_ctrl_launcher(){
         log_info "index : $index "
         if test $index -eq $REPLICAS ; then
             log_info ">>> Performing Check Recovery..."
-            RECOVERD=$(/code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT | jq ".code")
+            RECOVERD=$(ruby /code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT | jq ".code")
             RESULT_LENGTH=$(echo $RECOVERD | wc -L)
             if test $RESULT_LENGTH != "1" ; then
                 continue
@@ -439,9 +439,9 @@ function cluster_ctrl_launcher(){
 
             log_info ">>> Performing Build Redis Cluster..."
             if test $REDIS_CLUSTER_SLAVE_QUANTUM -eq 0 ;then
-                yes yes | head -1 | /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
+                yes yes | head -1 | ruby /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
             else
-                yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTUM $CLUSTER_CONFIG
+                yes yes | head -1 | ruby /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTUM $CLUSTER_CONFIG
             fi
             log_info "[OK] Congratulations,Redis Cluster Completed!"
             break
@@ -473,7 +473,7 @@ function cluster_ctrl_launcher(){
         if test $NEW_REPLICAS -ge $REPLICAS ;then
             if test $NEW_REPLICAS -eq $REPLICAS ;then
                 log_info ">>> Performing Check Redis Cluster..."
-                /code/redis/redis-trib.rb check $CLUSTER_NODE:$REDIS_PORT
+                ruby /code/redis/redis-trib.rb check $CLUSTER_NODE:$REDIS_PORT
                 sleep 180
             else
                 log_info ">>> Performing Add Node To The Redis Cluster"
@@ -510,7 +510,7 @@ function cluster_ctrl_launcher(){
                                 # 这里的auto就是之前改的redis-trib.rb,新增进去的子命令,用于自动迁移slot
                                 # /code/redis/redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
                                 # 集群扩容暂时有问题,先默认添加的节点为slave
-                                /code/redis/redis-trib.rb add-node --slave $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
+                                ruby /code/redis/redis-trib.rb add-node --slave $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
                             fi
                         done
 
@@ -536,7 +536,7 @@ if test $# -ne 0 ; then
     case $1 in
         "health")
             # --health 命令不是原生的,对 redis-trib.rb 做过修改
-            /code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT
+            ruby /code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT
             ;;
         *)
             log_error "wrong arguments!"
