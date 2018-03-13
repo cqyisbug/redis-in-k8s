@@ -508,7 +508,9 @@ function cluster_ctrl_launcher(){
                             
                             if  test $EXISTS -eq 0 ; then 
                                 # 这里的auto就是之前改的redis-trib.rb,新增进去的子命令,用于自动迁移slot
-                                /code/redis/redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
+                                # /code/redis/redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
+                                # 集群扩容暂时有问题,先默认添加的节点为slave
+                                /code/redis/redis-trib.rb add-node --slave $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
                             fi
                         done
 
