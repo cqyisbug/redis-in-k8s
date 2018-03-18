@@ -2,6 +2,7 @@
 
 import os
 import json
+import subprocess
 
 __root_path__ = None
 
@@ -23,6 +24,11 @@ def root_path():
 def install(rootpath, json_format=False, **config):
     __root_path__ = rootpath
     try:
+        if config['hostnetwork']:
+            nodes = exists_resource("node", "Ready", bool_result=False)
+            if nodes < config['replicas']:
+                return ResultInfo(code=3, message="k8s从节点数不能小于replicas").tostring()
+
         # 生成模板文件
         generateYaml(config)
         # 启动redis组件
@@ -31,21 +37,19 @@ def install(rootpath, json_format=False, **config):
                            "kubectl create -f #path#/yaml/svc-redis-cc.yaml ;"
                            "kubectl create -f #path#/yaml/svc-redis-cluster.yaml ;"
                            "kubectl create -f #path#/yaml/svc-redis-cluster-np.yaml".replace(
-            "#path#",
-            root_path()))
+                               "#path#",
+                               root_path()))
         if result == 0:
             if json_format:
-                data_2_file(json.dumps(config), os.path.join(
-                    root_path(), "redis.json"))
                 return ResultInfo(code=0, message="redis集群创建成功").tostring()
             else:
                 return True
         else:
             if json_format:
-                return ResultInfo(code=3, message="redis集群创建失败").tostring()
+                return ResultInfo(code=1, message="redis集群创建失败").tostring()
             else:
                 return False
-    except Exception :
+    except Exception:
         if json_format:
             return ResultInfo(code=2, message="Something worng happened.").tostring()
         else:
@@ -61,6 +65,34 @@ def data_2_file(data, filePath):
     file_stream.close()
 
 
+def exists_resource(resource, pattern, bool_result=True):
+    """
+    kubectl get {resource} | grep "{pattern}"
+    if bool_result:
+        return true or false
+    else:
+        return {the quantum of the resource}
+    """
+    try:
+        if len(resource) == 0 or len(pattern) == 0:
+            if bool_result:
+                return False
+            else:
+                return 0
+        cmd = "kubectl get " + \
+              str(resource) + " | grep \"" + str(pattern) + "\" | wc -l"
+        run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        quantum = int(run.stdout.read().replace('\n', ''))
+        if bool_result:
+            return quantum > 0
+        else:
+            return quantum
+    except Exception as e:
+        if bool_result:
+            return False
+        else:
+            return 0
+
 def generateYaml(config):
     '''
     根据配置
@@ -70,36 +102,69 @@ def generateYaml(config):
 
     data_2_file(
         get_sts_cc()
-            .replace("%REDIS_CLUSTER_SLAVE_QUANTUM%", "\"" + str(config["REDIS_CLUSTER_SLAVE_QUANTUM"]) + "\"")
-            .replace("%API_SERVER_ADDR%", "\"" + str(config["API_SERVER_ADDR"]) + "\"")
-            .replace("%IMAGE%", config["IMAGE"])
-            .replace("%REDIS_PORT%", str(config["REDIS_PORT"])),
+        .replace("%REDIS_CLUSTER_SLAVE_QUANTUM%",  str(config['slaves_pre_master']))
+        .replace("%API_SERVER_ADDR%", config['api_server'])
+        .replace("%IMAGE%", config["image"])
+        .replace("%REDIS_PORT%", str(config["port"])),
         os.path.join(root_path(), "yaml", "sts-redis-cc.yaml")
     )
 
-    data_2_file(
-        get_sts_cluster()
-            .replace("%REPLICAS%", str(config["REPLICAS"]))
-            .replace("%IMAGE%", config["IMAGE"])
-            .replace("%REDIS_PORT%", str(config["REDIS_PORT"]))
-            .replace("%API_SERVER_ADDR%", "\"" + str(config["API_SERVER_ADDR"]) + "\""),
-        os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
-    )
+    if config['storageclass'] and config['hostnetwork']:
+        data_2_file(
+            get_sts_cluster()
+            .replace("%REPLICAS%", str(config["replicas"]))
+            .replace("%IMAGE%", config["image"])
+            .replace("%REDIS_PORT%", str(config["port"]))
+            .replace("%API_SERVER_ADDR%", str(config["api_server"]))
+            .replace("%storageclass%",config['storageclass']),
+            os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
+        )
+    
+    if config['storageclass'] and not config['hostnetwork']:
+        data_2_file(
+            get_sts_cluster_nohost()
+            .replace("%REPLICAS%", str(config["replicas"]))
+            .replace("%IMAGE%", config["image"])
+            .replace("%REDIS_PORT%", str(config["port"]))
+            .replace("%API_SERVER_ADDR%", str(config["api_server"]))
+            .replace("%storageclass%",config['storageclass']),
+            os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
+        )
+
+    if not config['storageclass'] and config['hostnetwork']:
+        data_2_file(
+            get_sts_cluster_nohost()
+            .replace("%REPLICAS%", str(config["replicas"]))
+            .replace("%IMAGE%", config["image"])
+            .replace("%REDIS_PORT%", str(config["port"]))
+            .replace("%API_SERVER_ADDR%", str(config["api_server"])),
+            os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
+        )
+    
+    if not config['storageclass'] and not config['hostnetwork']:
+        data_2_file(
+            get_sts_cluster_nohost()
+            .replace("%REPLICAS%", str(config["replicas"]))
+            .replace("%IMAGE%", config["image"])
+            .replace("%REDIS_PORT%", str(config["port"]))
+            .replace("%API_SERVER_ADDR%", str(config["api_server"])),
+            os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
+        )
 
     data_2_file(
-        get_svc_cc().replace("%REDIS_PORT%", str(config["REDIS_PORT"])),
+        get_svc_cc().replace("%REDIS_PORT%", str(config["port"])),
         os.path.join(root_path(), "yaml", "svc-redis-cc.yaml")
     )
 
     data_2_file(
         get_svc_cluster().replace(
-            "%REDIS_PORT%", str(config["REDIS_PORT"])),
+            "%REDIS_PORT%", str(config["port"])),
         os.path.join(root_path(), "yaml", "svc-redis-cluster.yaml")
     )
 
     data_2_file(
         get_svc_cluster_np().replace(
-            "%REDIS_PORT%", str(config["REDIS_PORT"])),
+            "%REDIS_PORT%", str(config["port"])),
         os.path.join(root_path(), "yaml", "svc-redis-cluster-np.yaml")
     )
 
@@ -185,7 +250,7 @@ spec:
         - name: CLUSTER_SVC
           value: "svc-redis-cluster"
         - name: API_SERVER_ADDR
-          value: %API_SERVER_ADDR%
+          value: "%API_SERVER_ADDR%"
         - name: MY_POD_IP
           valueFrom:
             fieldRef:
@@ -202,7 +267,58 @@ spec:
   - metadata:
       name: rediscluster
       annotations:
-        volume.beta.kubernetes.io/storage-class: "fast"
+        volume.beta.kubernetes.io/storage-class: "%storageclass%"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+    '''
+def get_sts_cluster_nohost():
+    return '''apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sts-redis-cluster
+spec:
+  serviceName: "svc-redis-cluster"
+  replicas: %REPLICAS%
+  template:
+    metadata:
+      labels:
+        name: sts-redis-cluster
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cntr-redis-cluster
+        image: %IMAGE%
+        imagePullPolicy: Always
+        env:
+        - name: CLUSTER
+          value: "true"
+        - name: REDIS_PORT
+          value: "%REDIS_PORT%"
+        - name: CLUSTER_SVC
+          value: "svc-redis-cluster"
+        - name: API_SERVER_ADDR
+          value: "%API_SERVER_ADDR%"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: %REDIS_PORT%
+        volumeMounts:
+        - name: rediscluster
+          mountPath: /data/redis
+        securityContext:
+          capabilities: {}
+          privileged: true
+  volumeClaimTemplates:
+  - metadata:
+      name: rediscluster
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "%storageclass%"
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
@@ -210,6 +326,79 @@ spec:
           storage: 1Gi
     '''
 
+def get_sts_cluster_nostorage():
+    return '''apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sts-redis-cluster
+spec:
+  serviceName: "svc-redis-cluster"
+  replicas: %REPLICAS%
+  template:
+    metadata:
+      labels:
+        name: sts-redis-cluster
+        environment: test
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cntr-redis-cluster
+        image: %IMAGE%
+        imagePullPolicy: Always
+        env:
+        - name: CLUSTER
+          value: "true"
+        - name: REDIS_PORT
+          value: "%REDIS_PORT%"
+        - name: CLUSTER_SVC
+          value: "svc-redis-cluster"
+        - name: API_SERVER_ADDR
+          value: "%API_SERVER_ADDR%"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: %REDIS_PORT%
+    '''
+
+def get_sts_cluster_nohostandstorage():
+    return '''apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sts-redis-cluster
+spec:
+  serviceName: "svc-redis-cluster"
+  replicas: %REPLICAS%
+  template:
+    metadata:
+      labels:
+        name: sts-redis-cluster
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cntr-redis-cluster
+        image: %IMAGE%
+        imagePullPolicy: Always
+        env:
+        - name: CLUSTER
+          value: "true"
+        - name: REDIS_PORT
+          value: "%REDIS_PORT%"
+        - name: CLUSTER_SVC
+          value: "svc-redis-cluster"
+        - name: API_SERVER_ADDR
+          value: "%API_SERVER_ADDR%"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: %REDIS_PORT%
+    '''
 
 def get_sts_cc():
     return '''apiVersion: apps/v1beta1
@@ -236,9 +425,9 @@ spec:
         - name: CLUSTER_SVC
           value: "svc-redis-cluster"
         - name: REDIS_CLUSTER_SLAVE_QUANTUM
-          value: %REDIS_CLUSTER_SLAVE_QUANTUM%
+          value: "%REDIS_CLUSTER_SLAVE_QUANTUM%"
         - name: API_SERVER_ADDR
-          value: %API_SERVER_ADDR%
+          value: "%API_SERVER_ADDR%"
         - name: REDIS_PORT
           value: "%REDIS_PORT%"
         - name: MY_POD_IP

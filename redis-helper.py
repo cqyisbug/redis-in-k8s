@@ -83,24 +83,35 @@ def cli():
               help="the replicas of the redis cluster StatefulSet(sts-redis-cluster).")
 @click.option('-s', '--slaves-pre-master', type=int, prompt="slaves-pre-master",
               help="the count of pre salves of one master.")
-@click.option('-a', '--api-server', type=str, prompt="api-server-addr", help="Enter the api server addr")
-@click.option('-p','--port',type=int,prompt="redis-server-port",help="Redis server port")
+@click.option('-api', '--api-server', type=str, prompt="api-server-addr", help="Enter the api server addr")
+@click.option('-p', '--port', type=int, prompt="redis-server-port", help="Redis server port")
 @click.option('-host', '--hostnetwork', is_flag=True, help="Use hostnetwork or not.")
+@click.option('-sc', '--storageclass', is_flag=True, help="Enter your storageclass name.(kubectl get storageclass)")
+@click.option('-i', '--image', type=str, prompt='docker-image', help="Enter your redis docker image.")
 @common_option
-def install_command(replicas, slaves_pre_master, api_server, hostnetwork):
+def install_command(replicas, slaves_pre_master, api_server, port, hostnetwork, storageclass, image):
     if not can_build_cluster(replicas, slaves_pre_master):
         click.secho(
             'Wrong arguments! replicas must be greater than equal to (slaves_pre_master+1)*3 ', fg='blue')
         return False
     from command import install
-    result = install.install()
+    result = install.install(pgk_dir, json_format=True,
+                             replicas=replicas,
+                             slaves_pre_master=slaves_pre_master,
+                             api_server=api_server,
+                             port=port,
+                             hostnetwork=hostnetwork,
+                             storageclass=storageclass,
+                             image=image)
     click.secho(result, fg='blue')
 
 
 @cli.command(name="uninstall", help="Uninstall the redis cluster.")
 @common_option
 def uninstall_command():
-    pass
+    from command import uninstall
+    result = uninstall.uninstall(json_format=True)
+    click.secho(result, fg='blue')
 
 
 @cli.command(name="scale",
@@ -108,8 +119,10 @@ def uninstall_command():
 @click.option('-r', '--replicas', type=int, prompt="new-replicas",
               help="the new replicas of the redis cluster StatefulSet(sts-redis-cluster)")
 @common_option
-def scale_command():
-    pass
+def scale_command(replicas):
+    from command import scale
+    result = scale.scale(replicas,json_format=True)
+    click.secho(result, fg='blue')
 
 
 @cli.command(name="check", help="Health check for the redis cluster!")
@@ -119,11 +132,15 @@ def check_health_command():
     result = healthcheck.health_check()
     click.secho(result, fg='blue')
 
-@cli.command(name='build',help='Build the docker image.')
+
+@cli.command(name='build', help='Build the docker image.')
+@click.option('-t','--tag',type= str,help="Enter you docker image(tag) name.")
 @common_option
-def build_command():
+def build_command(tag):
     from command import build
-    pass
+    result = build.build(tag)
+    click.secho(result, fg='blue')
+
 
 if __name__ == '__main__':
     cli()
