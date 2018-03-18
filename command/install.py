@@ -37,8 +37,8 @@ def install(rootpath, json_format=False, **config):
                            "kubectl create -f #path#/yaml/svc-redis-cc.yaml ;"
                            "kubectl create -f #path#/yaml/svc-redis-cluster.yaml ;"
                            "kubectl create -f #path#/yaml/svc-redis-cluster-np.yaml".replace(
-                               "#path#",
-                               root_path()))
+            "#path#",
+            root_path()))
         if result == 0:
             if json_format:
                 return ResultInfo(code=0, message="redis集群创建成功").tostring()
@@ -93,6 +93,7 @@ def exists_resource(resource, pattern, bool_result=True):
         else:
             return 0
 
+
 def generateYaml(config):
     '''
     根据配置
@@ -102,52 +103,52 @@ def generateYaml(config):
 
     data_2_file(
         get_sts_cc()
-        .replace("%REDIS_CLUSTER_SLAVE_QUANTUM%",  str(config['slaves_pre_master']))
-        .replace("%API_SERVER_ADDR%", config['api_server'])
-        .replace("%IMAGE%", config["image"])
-        .replace("%REDIS_PORT%", str(config["port"])),
+            .replace("%REDIS_CLUSTER_SLAVE_QUANTUM%", str(config['slaves_pre_master']))
+            .replace("%API_SERVER_ADDR%", config['api_server'])
+            .replace("%IMAGE%", config["image"])
+            .replace("%REDIS_PORT%", str(config["port"])),
         os.path.join(root_path(), "yaml", "sts-redis-cc.yaml")
     )
 
     if config['storageclass'] and config['hostnetwork']:
         data_2_file(
             get_sts_cluster()
-            .replace("%REPLICAS%", str(config["replicas"]))
-            .replace("%IMAGE%", config["image"])
-            .replace("%REDIS_PORT%", str(config["port"]))
-            .replace("%API_SERVER_ADDR%", str(config["api_server"]))
-            .replace("%storageclass%",config['storageclass']),
+                .replace("%REPLICAS%", str(config["replicas"]))
+                .replace("%IMAGE%", config["image"])
+                .replace("%REDIS_PORT%", str(config["port"]))
+                .replace("%API_SERVER_ADDR%", str(config["api_server"]))
+                .replace("%storageclass%", config['storageclass']),
             os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
         )
-    
+
     if config['storageclass'] and not config['hostnetwork']:
         data_2_file(
             get_sts_cluster_nohost()
-            .replace("%REPLICAS%", str(config["replicas"]))
-            .replace("%IMAGE%", config["image"])
-            .replace("%REDIS_PORT%", str(config["port"]))
-            .replace("%API_SERVER_ADDR%", str(config["api_server"]))
-            .replace("%storageclass%",config['storageclass']),
+                .replace("%REPLICAS%", str(config["replicas"]))
+                .replace("%IMAGE%", config["image"])
+                .replace("%REDIS_PORT%", str(config["port"]))
+                .replace("%API_SERVER_ADDR%", str(config["api_server"]))
+                .replace("%storageclass%", config['storageclass']),
             os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
         )
 
     if not config['storageclass'] and config['hostnetwork']:
         data_2_file(
             get_sts_cluster_nohost()
-            .replace("%REPLICAS%", str(config["replicas"]))
-            .replace("%IMAGE%", config["image"])
-            .replace("%REDIS_PORT%", str(config["port"]))
-            .replace("%API_SERVER_ADDR%", str(config["api_server"])),
+                .replace("%REPLICAS%", str(config["replicas"]))
+                .replace("%IMAGE%", config["image"])
+                .replace("%REDIS_PORT%", str(config["port"]))
+                .replace("%API_SERVER_ADDR%", str(config["api_server"])),
             os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
         )
-    
+
     if not config['storageclass'] and not config['hostnetwork']:
         data_2_file(
             get_sts_cluster_nohost()
-            .replace("%REPLICAS%", str(config["replicas"]))
-            .replace("%IMAGE%", config["image"])
-            .replace("%REDIS_PORT%", str(config["port"]))
-            .replace("%API_SERVER_ADDR%", str(config["api_server"])),
+                .replace("%REPLICAS%", str(config["replicas"]))
+                .replace("%IMAGE%", config["image"])
+                .replace("%REDIS_PORT%", str(config["port"]))
+                .replace("%API_SERVER_ADDR%", str(config["api_server"])),
             os.path.join(root_path(), "yaml", "sts-redis-cluster.yaml")
         )
 
@@ -274,6 +275,8 @@ spec:
         requests:
           storage: 1Gi
     '''
+
+
 def get_sts_cluster_nohost():
     return '''apiVersion: apps/v1beta1
 kind: StatefulSet
@@ -326,6 +329,7 @@ spec:
           storage: 1Gi
     '''
 
+
 def get_sts_cluster_nostorage():
     return '''apiVersion: apps/v1beta1
 kind: StatefulSet
@@ -364,6 +368,7 @@ spec:
         - containerPort: %REDIS_PORT%
     '''
 
+
 def get_sts_cluster_nohostandstorage():
     return '''apiVersion: apps/v1beta1
 kind: StatefulSet
@@ -399,6 +404,7 @@ spec:
         ports:
         - containerPort: %REDIS_PORT%
     '''
+
 
 def get_sts_cc():
     return '''apiVersion: apps/v1beta1

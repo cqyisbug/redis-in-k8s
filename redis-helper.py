@@ -121,7 +121,7 @@ def uninstall_command():
 @common_option
 def scale_command(replicas):
     from command import scale
-    result = scale.scale(replicas,json_format=True)
+    result = scale.scale(replicas, json_format=True)
     click.secho(result, fg='blue')
 
 
@@ -134,7 +134,7 @@ def check_health_command():
 
 
 @cli.command(name='build', help='Build the docker image.')
-@click.option('-t','--tag',type= str,help="Enter you docker image(tag) name.")
+@click.option('-t', '--tag', type=str, help="Enter you docker image(tag) name.")
 @common_option
 def build_command(tag):
     from command import build

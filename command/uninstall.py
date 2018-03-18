@@ -2,8 +2,9 @@
 
 import os
 import json
-import time 
+import time
 import subprocess
+
 
 def uninstall(json_format=False):
     try:
@@ -38,9 +39,10 @@ def uninstall(json_format=False):
                 return False
     except Exception:
         if json_format:
-            return ResultInfo(code=1, message="redis集群删除失败:" ).tostring()
+            return ResultInfo(code=1, message="redis集群删除失败:").tostring()
         else:
             return False
+
 
 class ResultInfo(object):
     def __init__(self, code=0, message=""):
