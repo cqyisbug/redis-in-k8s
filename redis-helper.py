@@ -92,7 +92,7 @@ def cli():
 def install_command(replicas, slaves_pre_master, api_server, port, hostnetwork, storageclass, image):
     if not can_build_cluster(replicas, slaves_pre_master):
         click.secho(
-            'Wrong arguments! replicas must be greater than equal to (slaves_pre_master+1)*3 ', fg='blue')
+            'Wrong arguments! replicas must be greater than equal to (slaves_pre_master+1)*3 ', fg='red')
         return False
     from command import install
     result = install.install(pgk_dir, json_format=True,
