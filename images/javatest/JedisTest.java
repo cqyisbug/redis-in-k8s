@@ -18,12 +18,7 @@ public class JedisTest {
     public static void main(String[] args) {
         Set<HostAndPort> jedisClusterNodes = new HashSet<HostAndPort>();
 
-        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-0.svc-redis-cluster", 6379));
-        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-1.svc-redis-cluster", 6379));
-        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-2.svc-redis-cluster", 6379));
-        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-3.svc-redis-cluster", 6379));
-        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-4.svc-redis-cluster", 6379));
-        jedisClusterNodes.add(new HostAndPort("sf-redis-cluster-5.svc-redis-cluster", 6379));
+        jedisClusterNodes.add(new HostAndPort("svc-redis-cluster-np", 6379));
 
         JedisCluster jc = new JedisCluster(jedisClusterNodes);
 
