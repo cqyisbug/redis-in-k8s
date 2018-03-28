@@ -1121,11 +1121,13 @@ class RedisTrib
             keys = source.r.cluster("getkeysinslot", slot, o[:pipeline])
             break if keys.length == 0
             begin
-                source.r.client.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :keys, *keys])
+                # source.r.client.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :keys, *keys])
+                source.r.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :keys, *keys])
             rescue => e
                 if o[:fix] && e.to_s =~ /BUSYKEY/
                     xputs "*** Target key exists. Replacing it for FIX."
-                    source.r.client.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :replace, :keys, *keys])
+                    # source.r.client.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :replace, :keys, *keys])
+                    source.r.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :replace, :keys, *keys])
                 else
                     puts ""
                     xputs "[ERR] Calling MIGRATE: #{e}"
@@ -1558,7 +1560,7 @@ class RedisTrib
             # master = get_master_with_least_replicas
             if master.info[:replicas].length > 0
 
-                xputs "\n[WARNING] Moving slots is a dangerious operation,please don't interrupt it."
+                xputs ">>> Moving slots is a dangerious operation,please don't interrupt it."
                 xputs ">>> Performing automatically resharding slots to the new node"
 
                 masters = 0;
@@ -1594,6 +1596,10 @@ class RedisTrib
                 reshard_table = compute_reshard_table(sources, numslots)
                 # puts "  Resharding plan:"
                 # show_reshard_table(reshard_table)
+                
+                # double lock ,make sure that the redis cluster is stable
+                wait_cluster_join
+                sleep 10
 
                 reshard_table.each {|e|
                     move_slot(e[:source], target, e[:slot],
