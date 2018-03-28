@@ -283,12 +283,12 @@ function cluster_launcher(){
     if test -f /data/redis/cluster-old.ip ; then
         if test -f "/data/redis/nodes.conf" ; then 
             
-            echo_info "+-------------------------OLD IP CONFIG MAP--------------------------+"
-            cat /data/redis/cluster-old.ip
-            echo_info "+-------------------------NEW IP CONFIG MAP--------------------------+"
-            cat /data/redis/cluster-new.ip
-            echo_info "+-------------------------OLD CLUSTER NODE---------------------------+"
-            cat /data/redis/nodes.conf
+            # echo_info "+-------------------------OLD IP CONFIG MAP--------------------------+"
+            # cat /data/redis/cluster-old.ip
+            # echo_info "+-------------------------NEW IP CONFIG MAP--------------------------+"
+            # cat /data/redis/cluster-new.ip
+            # echo_info "+-------------------------OLD CLUSTER NODE---------------------------+"
+            # cat /data/redis/nodes.conf
             
             index=0
             cat /data/redis/cluster-old.ip | while read oldip 
@@ -307,8 +307,8 @@ function cluster_launcher(){
             done
             
             
-            echo_info "+-------------------------NEW CLUSTER NODE---------------------------+"
-            cat /data/redis/nodes.conf
+            # echo_info "+-------------------------NEW CLUSTER NODE---------------------------+"
+            # cat /data/redis/nodes.conf
         else
             log_error "[ERROR] something wrong with presistent"
         fi
@@ -508,9 +508,9 @@ function cluster_ctrl_launcher(){
                             
                             if  test $EXISTS -eq 0 ; then 
                                 # 这里的auto就是之前改的redis-trib.rb,新增进去的子命令,用于自动迁移slot
-                                # /code/redis/redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
+                                /code/redis/redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
                                 # 集群扩容暂时有问题,先默认添加的节点为slave
-                                /code/redis/redis-trib.rb add-node --slave $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
+                                # /code/redis/redis-trib.rb add-node --slave $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
                             fi
                         done
 
