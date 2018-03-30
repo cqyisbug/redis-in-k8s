@@ -19,10 +19,12 @@ spec:
         env:
         - name: CLUSTER_CTRL
           value: "true"
-        - name: CLUSTER_SVC
-          value: "svc-redis-cluster"
         - name: REDIS_CLUSTER_SLAVE_QUANTUM
           value: "1"
+        - name: LOG_LEVEL
+          value: 0
+        - name: SHOW_HEALTH_DETAIL
+          value: "true"
         - name: API_SERVER_ADDR
           value: "172.20.0.12:8080"
         - name: REDIS_PORT

@@ -23,37 +23,71 @@
 #
 #==================================================================================================================
 
+# 日志等级定义, 0:debug 1:info 2:warn 3:error
 
-function echo_warn(){
-    echo -e "\033[33m$1\033[0m"
+if test ! $LOG_LEVEL ; then
+    LOG_LEVEL=0
+fi
+
+if test ! $SHOW_HEALTH_DETAIL ; then
+    SHOW_HEALTH_DETAIL=true
+fi
+
+function echo_debug(){
+    if test $LOG_LEVEL -le 0 ; then
+        echo -e "\033[36m$1\033[0m"
+    fi 
 }
 
 function echo_info(){
-    echo -e "\033[36m$1\033[0m"
+    if test $LOG_LEVEL -le 1 ; then
+        echo -e "\033[34m$1\033[0m"
+    fi 
+}
+
+function echo_warn(){
+    if test $LOG_LEVEL -le 2 ; then
+        echo -e "\033[33m$1\033[0m"
+    fi 
 }
 
 function echo_error(){
-    echo -e "\033[31m$1\033[0m"
+    if test $LOG_LEVEL -le 3 ; then
+        echo -e "\033[31m$1\033[0m"
+    fi 
+}
+
+function log_debug(){
+    if test $LOG_LEVEL -le 0 ; then
+        time=$(date "+%Y-%m-%d %H:%M:%S")
+        echo -e "\033[36m$time  -  $1\033[0m"
+    fi 
 }
 
 function log_info(){
-    time=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "\033[36m$time  -  $1\033[0m"
+    if test $LOG_LEVEL -le 1 ; then
+        time=$(date "+%Y-%m-%d %H:%M:%S")
+        echo -e "\033[34m$time  -  $1\033[0m"
+    fi 
 }
 
 function log_warn(){
-    time=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "\033[33m$time  - [WARNNING] $1\033[0m"
+    if test $LOG_LEVEL -le 2 ; then
+        time=$(date "+%Y-%m-%d %H:%M:%S")
+        echo -e "\033[33m$time  - [WARNNING] $1\033[0m"
+    fi 
 }
 
 function log_error(){
-    time=$(date "+%Y-%m-%d %H:%M:%S")
-    echo -e "\033[31m$time  - [ERROR] $1\033[0m"
+    if test $LOG_LEVEL -le 3 ; then
+        time=$(date "+%Y-%m-%d %H:%M:%S")
+        echo -e "\033[31m$time  - [ERROR] $1\033[0m"
+    fi 
 }
 
 
 function ip_array_length(){
-    ips=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
+    ips=$(nslookup $1 | grep 'Address' |awk '{print $3}')
     index=0
     for ip in $ips ;
     do
@@ -69,13 +103,15 @@ function get_replicas(){
 }
 
 # 等待指定的statefulset 下的所有的pod启动完毕
+# $1 name of the statfulset
+# $2 name of the statfulset's svc
 function wait_all_pod_ready(){
     while true ; do
-        ready_ip_length=$(ip_array_length) 
+        ready_ip_length=$(ip_array_length $2) 
         replicas=$(get_replicas $1)   
 
-        echo_info "IP_ARRAY_LENGTH  : $ready_ip_length     "
-        echo_info "REPLICAS  : $replicas     "
+        echo_debug "IP_ARRAY_LENGTH  :   $ready_ip_length"
+        echo_debug "REPLICAS         :   $replicas"
 
         if test $ready_ip_length == $replicas ; then
             log_info "[OK] Pod Ready!!!"
@@ -133,14 +169,15 @@ function master_launcher(){
             # 通过哨兵找到master，验证master是否正确
             redis-cli -h $MASTER_IP -p $MASTER_PORT INFO
             if test "$?" == "0" ; then
-                sed -i "s/%master-ip%/$MASTER_IP/" /data/redis/slave.conf
-                sed -i "s/%master-port%/$MASTER_PORT/" /data/redis/slave.conf
-                PERSISTENT_PATH="/data/redis"
-                sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /data/redis/slave.conf
-                THIS_IP=$(hostname -i)
-                echo "slave-announce-ip $THIS_IP" >> /data/redis/slave.conf
-                echo "slave-announce-port $MASTER_PORT" >> /data/redis/slave.conf
-                echo "logfile /data/redis/redis.log" >> /data/redis/slave.conf
+                {
+                    sed -i "s/%master-ip%/$MASTER_IP/" /data/redis/slave.conf
+                    sed -i "s/%master-port%/$MASTER_PORT/" /data/redis/slave.conf
+                    PERSISTENT_PATH="/data/redis"
+                    sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /data/redis/slave.conf
+                    echo "slave-announce-ip ${MY_POD_IP}" 
+                    echo "slave-announce-port $MASTER_PORT" 
+                    echo "logfile /data/redis/redis.log"
+                } >> /data/redis/slave.conf
                 redis-server /data/redis/slave.conf --protected-mode no
                 break
             else
@@ -197,16 +234,16 @@ function slave_launcher(){
         sleep 5
     done
 
-    THIS_IP=$(hostname -i)
+    {
+        sed -i "s/%master-ip%/${MASTER_IP}/" /data/redis/slave.conf
+        sed -i "s/%master-port%/${MASTER_PORT}/" /data/redis/slave.conf
+        PERSISTENT_PATH="/data/redis/slave"
+        sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /data/redis/slave.conf
 
-    sed -i "s/%master-ip%/${MASTER_IP}/" /data/redis/slave.conf
-    sed -i "s/%master-port%/${MASTER_PORT}/" /data/redis/slave.conf
-    PERSISTENT_PATH="/data/redis/slave"
-    sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" /data/redis/slave.conf
-
-    echo "slave-announce-ip ${THIS_IP}" >> /data/redis/slave.conf
-    echo "slave-announce-port $MASTER_PORT" >> /data/redis/slave.conf
-    echo "logfile /data/redis/redis.log" >> /data/redis/slave.conf
+        echo "slave-announce-ip ${MY_POD_IP}" 
+        echo "slave-announce-port $MASTER_PORT" 
+        echo "logfile /data/redis/redis.log" 
+    } >> /data/redis/slave.conf
 
     redis-server  /data/redis/slave.conf --protected-mode no
 }
@@ -257,15 +294,15 @@ function sentinel_launcher(){
 
     log_info "Master: $MASTER_IP"
 
-    sentinel_conf=/data/redis/sentinel.conf
-
-    echo "port $SENTINEL_PORT" >> ${sentinel_conf}
-    echo "sentinel monitor mymaster ${MASTER_IP} ${MASTER_PORT} 2" >> ${sentinel_conf}
-    echo "sentinel down-after-milliseconds mymaster 30000" >> ${sentinel_conf}
-    echo "sentinel failover-timeout mymaster 180000" >> ${sentinel_conf}
-    echo "sentinel parallel-syncs mymaster 1" >> ${sentinel_conf}
-    echo "bind $(hostname -i) 127.0.0.1" >> ${sentinel_conf}
-    echo "logfile /data/redis/redis.log" >> ${sentinel_conf}
+    {
+        echo "port $SENTINEL_PORT"
+        echo "sentinel monitor mymaster ${MASTER_IP} ${MASTER_PORT} 2"
+        echo "sentinel down-after-milliseconds mymaster 30000"
+        echo "sentinel failover-timeout mymaster 180000"
+        echo "sentinel parallel-syncs mymaster 1"
+        echo "bind ${MY_POD_IP} 127.0.0.1"
+        echo "logfile /data/redis/redis.log"
+    } >> /data/redis/sentinel.conf
 
     redis-sentinel ${sentinel_conf} --protected-mode no
 }
@@ -273,25 +310,16 @@ function sentinel_launcher(){
 # 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
     # 等待并保存ip和pod的关系
-    wait_all_pod_ready "sts-redis-cluster"
+    wait_all_pod_ready "sts-redis-cluster" "svc-redis-cluster"
     save_relation "new"
 
     # 如果有旧的关系文件,那么就对nodes.conf进行替换
     
     if test -f /data/redis/cluster-old.ip ; then
         if test -f "/data/redis/nodes.conf" ; then 
-            
-            # echo_info "+-------------------------OLD IP CONFIG MAP--------------------------+"
-            # cat /data/redis/cluster-old.ip
-            # echo_info "+-------------------------NEW IP CONFIG MAP--------------------------+"
-            # cat /data/redis/cluster-new.ip
-            # echo_info "+-------------------------OLD CLUSTER NODE---------------------------+"
-            # cat /data/redis/nodes.conf
-            
             index=0
             cat /data/redis/cluster-old.ip | while read oldip 
             do
-                # newip=$(sed -n "$index"p /data/redis/cluster-new.ip)
                 sed -i "s/${oldip}/pod${index}/g" /data/redis/nodes.conf
                 let index++
             done
@@ -299,43 +327,39 @@ function cluster_launcher(){
             index=0
             cat /data/redis/cluster-new.ip | while read newip 
             do
-                # newip=$(sed -n "$index"p /data/redis/cluster-new.ip)
                 sed -i "s/pod${index}/${newip}/g" /data/redis/nodes.conf
                 let index++
             done
-            
-            
-            # echo_info "+-------------------------NEW CLUSTER NODE---------------------------+"
-            # cat /data/redis/nodes.conf
         else
             log_error "[ERROR] something wrong with presistent"
         fi
     fi
-    # use k8s environment
-    log_info "Starting cluster ..."
 
+    log_info "Starting cluster ..."
     if test -f "/config/redis/cluster.conf" ; then
         cp /config/redis/cluster.conf /data/redis/cluster.conf
     else
         log_error "can not find file -> /config/redis/cluster.conf"
     fi
 
-    echo "port ${REDIS_PORT}" >> /data/redis/cluster.conf
-    echo "bind ${MY_POD_IP} 127.0.0.1 " >> /data/redis/cluster.conf
-    echo "daemonize yes" >> /data/redis/cluster.conf
+    {
+        echo "port ${REDIS_PORT}" 
+        echo "bind ${MY_POD_IP} 127.0.0.1 " 
+        echo "daemonize yes" 
 
-    echo "slave-announce-ip ${MY_POD_IP}" >> /data/redis/cluster.conf
-    echo "slave-announce-port ${REDIS_PORT}" >> /data/redis/cluster.conf
+        echo "slave-announce-ip ${MY_POD_IP}" 
+        echo "slave-announce-port ${REDIS_PORT}" 
 
-    echo "cluster-announce-ip ${MY_POD_IP}" >> /data/redis/cluster.conf
-    echo "cluster-announce-port ${REDIS_PORT}" >> /data/redis/cluster.conf
+        echo "cluster-announce-ip ${MY_POD_IP}" 
+        echo "cluster-announce-port ${REDIS_PORT}" 
 
-    echo "logfile /data/redis/redis.log" >> /data/redis/cluster.conf
+        echo "logfile /data/redis/redis.log" 
+    } >> /data/redis/cluster.conf
 
     redis-server /data/redis/cluster.conf --protected-mode no
 
     while true ; do 
-        CLUSTER_CHECK_RESULT=$(/code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
+        CLUSTER_CHECK_RESULT=$(ruby /code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
         RESULT_LENGTH=$(echo $CLUSTER_CHECK_RESULT | wc -L)
         if test $RESULT_LENGTH != "1" ; then
             sleep 10
@@ -356,7 +380,7 @@ function cluster_ctrl_launcher(){
 
     echo_info "+--------------------------------------------------------------------+"
     echo_info "|                                                                    |"
-    echo_info "|\t\t\tCLUSTER_SVC  : $CLUSTER_SVC     "
+    echo_info "|\t\t\tCLUSTER_SVC  : svc-redis-cluster     "
     echo_info "|\t\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
     echo_info "|\t\t\tREDIS_CLUSTER_SLAVE_QUANTUM  : $REDIS_CLUSTER_SLAVE_QUANTUM    "
     echo_info "|                                                                    |"
@@ -404,7 +428,7 @@ function cluster_ctrl_launcher(){
 
         log_info ">>> Performing Redis Cluster Pod Check..."
 
-        IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
+        IP_ARRAY=$(nslookup svc-redis-cluster | grep 'Address' |awk '{print $3}')
         # log_info "Ready Pod IP : $IP_ARRAY"
         CLUSTER_CONFIG=""
         index=0
@@ -424,7 +448,7 @@ function cluster_ctrl_launcher(){
         log_info "index : $index "
         if test $index -eq $REPLICAS ; then
             log_info ">>> Performing Check Recovery..."
-            RECOVERD=$(/code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT | jq ".code")
+            RECOVERD=$(ruby /code/redis/redis-trib.rb check --health svc-redis-cluster:$REDIS_PORT | jq ".code")
             RESULT_LENGTH=$(echo $RECOVERD | wc -L)
             if test $RESULT_LENGTH != "1" ; then
                 continue
@@ -437,9 +461,9 @@ function cluster_ctrl_launcher(){
 
             log_info ">>> Performing Build Redis Cluster..."
             if test $REDIS_CLUSTER_SLAVE_QUANTUM -eq 0 ;then
-                yes yes | head -1 | /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
+                yes yes | head -1 | ruby /code/redis/redis-trib.rb create  $CLUSTER_CONFIG
             else
-                yes yes | head -1 | /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTUM $CLUSTER_CONFIG
+                yes yes | head -1 | ruby /code/redis/redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTUM $CLUSTER_CONFIG
             fi
             log_info "[OK] Congratulations,Redis Cluster Completed!"
             break
@@ -471,12 +495,16 @@ function cluster_ctrl_launcher(){
         if test $NEW_REPLICAS -ge $REPLICAS ;then
             if test $NEW_REPLICAS -eq $REPLICAS ;then
                 log_info ">>> Performing Check Redis Cluster..."
-                /code/redis/redis-trib.rb check $CLUSTER_NODE:$REDIS_PORT
+                if test $SHOW_HEALTH_DETAIL == "true" then
+                    ruby /code/redis/redis-trib.rb check $CLUSTER_NODE:$REDIS_PORT
+                else 
+                    ruby /code/redis/redis-trib.rb check --health $CLUSTER_NODE:$REDIS_PORT
+                fi
                 sleep 180
             else
                 log_info ">>> Performing Add Node To The Redis Cluster"
                 while true ; do
-                    NEW_IP_ARRAY=$(nslookup $CLUSTER_SVC | grep 'Address' |awk '{print $3}')
+                    NEW_IP_ARRAY=$(nslookup svc-redis-cluster | grep 'Address' |awk '{print $3}')
                     log_info "Ready Pod IP : $NEW_IP_ARRAY"
                     new_index=0
                     for ip in $NEW_IP_ARRAY ;
@@ -506,9 +534,9 @@ function cluster_ctrl_launcher(){
                             
                             if  test $EXISTS -eq 0 ; then 
                                 # 这里的auto就是之前改的redis-trib.rb,新增进去的子命令,用于自动迁移slot
-                                /code/redis/redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
+                                # ruby /code/redis/redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
                                 # 集群扩容暂时有问题,先默认添加的节点为slave
-                                # /code/redis/redis-trib.rb add-node --slave $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
+                                ruby /code/redis/redis-trib.rb add-node --slave $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
                             fi
                         done
 
@@ -534,7 +562,7 @@ if test $# -ne 0 ; then
     case $1 in
         "health")
             # --health 命令不是原生的,对 redis-trib.rb 做过修改
-            /code/redis/redis-trib.rb check --health sts-redis-cluster-0.svc-redis-cluster:$REDIS_PORT
+            ruby /code/redis/redis-trib.rb check --health svc-redis-cluster:$REDIS_PORT
             ;;
         *)
             log_error "wrong arguments!"
