@@ -74,10 +74,8 @@ function wait_all_pod_ready(){
         ready_ip_length=$(ip_array_length) 
         replicas=$(get_replicas $1)   
 
-        echo_info ""
-        echo_info "\t\t\tIP_ARRAY_LENGTH  : $ready_ip_length     "
-        echo_info "\t\t\tREPLICAS  : $replicas     "
-        echo_info ""
+        echo_info "IP_ARRAY_LENGTH  : $ready_ip_length     "
+        echo_info "REPLICAS  : $replicas     "
 
         if test $ready_ip_length == $replicas ; then
             log_info "[OK] Pod Ready!!!"
@@ -116,13 +114,13 @@ function master_launcher(){
     if test -f "/config/redis/slave.conf" ; then
         cp /config/redis/slave.conf /data/redis/slave.conf
     else
-        log_error "Sorry , I cant find file -> /config/redis/slave.conf"
+        log_error "can not find file -> /config/redis/slave.conf"
     fi
 
     if test -f "/config/redis/master.conf" ; then
         cp /config/redis/master.conf /data/redis/master.conf
     else
-        log_error "Sorry , I cant find file -> /config/redis/master.conf"
+        log_error "can not find file -> /config/redis/master.conf"
     fi
 
     # 循环10次
@@ -175,7 +173,7 @@ function slave_launcher(){
     if test -f "/config/redis/slave.conf" ; then
         cp /config/redis/slave.conf /data/redis/slave.conf
     else
-        log_error "Sorry , I cant find file -> /config/redis/slave.conf"
+        log_error "can not find file -> /config/redis/slave.conf"
     fi
 
 
@@ -319,7 +317,7 @@ function cluster_launcher(){
     if test -f "/config/redis/cluster.conf" ; then
         cp /config/redis/cluster.conf /data/redis/cluster.conf
     else
-        log_error "Sorry , I cant find file -> /config/redis/cluster.conf"
+        log_error "can not find file -> /config/redis/cluster.conf"
     fi
 
     echo "port ${REDIS_PORT}" >> /data/redis/cluster.conf
