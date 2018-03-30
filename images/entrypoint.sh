@@ -380,7 +380,6 @@ function cluster_ctrl_launcher(){
 
     echo_info "+--------------------------------------------------------------------+"
     echo_info "|                                                                    |"
-    echo_info "|\t\t\tCLUSTER_SVC  : svc-redis-cluster     "
     echo_info "|\t\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
     echo_info "|\t\t\tREDIS_CLUSTER_SLAVE_QUANTUM  : $REDIS_CLUSTER_SLAVE_QUANTUM    "
     echo_info "|                                                                    |"
