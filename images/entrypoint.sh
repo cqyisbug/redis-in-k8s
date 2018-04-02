@@ -87,13 +87,25 @@ function log_error(){
 
 
 function ip_array_length(){
-    ips=$(nslookup $1 | grep 'Address' |awk '{print $3}')
+    ips=$(nslookup $1 2>/dev/null | grep 'Address' |awk '{print $3}')
     index=0
     for ip in $ips ;
     do
         let index++
     done
     echo $index
+}
+
+# 获取node的个数
+function get_nodes(){
+    nodes=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
+    echo $nodes
+}
+
+# 获取指定statefulset 下是否使用hostnetwor
+function use_hostnetwork(){
+    hostnetwork=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/$1 | jq ".spec.template.spec.hostNetwork" )
+    echo $hostnetwork
 }
 
 # 获取指定statefulset 下的副本数
@@ -110,6 +122,7 @@ function wait_all_pod_ready(){
         ready_ip_length=$(ip_array_length $2) 
         replicas=$(get_replicas $1)   
 
+        echo_debug "-------------------- [debug] --------------------"
         echo_debug "IP_ARRAY_LENGTH  :   $ready_ip_length"
         echo_debug "REPLICAS         :   $replicas"
 
@@ -162,7 +175,7 @@ function master_launcher(){
     # 循环10次
     guard=0
     while test $guard -lt 10 ; do
-        SENTINEL_IP=$(nslookup $SENTINEL_HOST | grep 'Address' | awk '{print $3}')
+        SENTINEL_IP=$(nslookup $SENTINEL_HOST 2>/dev/null | grep 'Address' | awk '{print $3}')
         MASTER_IP=$(redis-cli -h $SENTINEL_IP -p $SENTINEL_PORT --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
         if [[ -n $MASTER_IP && $MASTER_IP != "ERROR" ]] ; then
             MASTER_IP="${MASTER_IP//\"}"
@@ -215,7 +228,7 @@ function slave_launcher(){
 
 
     while true; do
-        SENTINEL_IP=$(nslookup ${SENTINEL_HOST} | grep 'Address' | awk '{print $3}')
+        SENTINEL_IP=$(nslookup ${SENTINEL_HOST} 2>/dev/null | grep 'Address' | awk '{print $3}')
         MASTER_IP=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
         if [[ -n ${MASTER_IP} ]] && [[ ${MASTER_IP} != "ERROR" ]] ; then
             MASTER_IP="${MASTER_IP//\"}"
@@ -265,7 +278,7 @@ function sentinel_launcher(){
         index=0
         while true; do
             let index++
-            IP_ARRAY=$(nslookup $SENTINEL_SVC | grep 'Address' |awk '{print $3}' )
+            IP_ARRAY=$(nslookup $SENTINEL_SVC 2>/dev/null | grep 'Address' |awk '{print $3}' )
             for IP in $IP_ARRAY ;
             do
                 MASTER_IP=$(redis-cli -h ${IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
@@ -280,7 +293,7 @@ function sentinel_launcher(){
             done
             if test $index -ge 10 ; then
                 log_info "Could not find the Sentinel ,Try to connenct the master directly!..."
-                MASTER_IP=$(nslookup $MASTER_HOST | grep 'Address' | awk '{print $3}')
+                MASTER_IP=$(nslookup $MASTER_HOST 2>/dev/null | grep 'Address' | awk '{print $3}')
                 redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
                 if test "$?" == "0" ; then
                     break 2
@@ -400,9 +413,10 @@ function cluster_ctrl_launcher(){
     while true; do
         
         log_info ">>> Performing Cluster Config Check"
-        REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
-        NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
-        HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
+
+        REPLICAS=$(get_replicas "sts-redis-cluster")
+        NODES=$(get_nodes)
+        HOST_NETWORK=$(use_hostnetwork "sts-redis-cluster") 
 
         echo_info "+--------------------------------------------------------------------+"
         echo_info "|                                                                    |"
@@ -427,15 +441,15 @@ function cluster_ctrl_launcher(){
 
         log_info ">>> Performing Redis Cluster Pod Check..."
 
-        IP_ARRAY=$(nslookup svc-redis-cluster | grep 'Address' |awk '{print $3}')
+        IP_ARRAY=$(nslookup svc-redis-cluster 2>/dev/null | grep 'Address' |awk '{print $3}')
         # log_info "Ready Pod IP : $IP_ARRAY"
         CLUSTER_CONFIG=""
         index=0
         for ip in $IP_ARRAY ;
         do
-            redis-cli -h ${ip} -p ${REDIS_PORT} INFO > tempinfo.log
+            redis-cli -h ${ip} -p ${REDIS_PORT} INFO 1>/dev/null 2>&1
             if test "$?" != "0" ; then
-                log_error " Connected to $ip failed ,execute break"
+                log_debug " Connected to $ip failed ,execute break"
                 break
             fi
             CLUSTER_CONFIG=${ip}":${REDIS_PORT} "${CLUSTER_CONFIG}
@@ -475,9 +489,11 @@ function cluster_ctrl_launcher(){
 
     while true ; do
         log_info ">>> Performing Check Redis Cluster Pod Replicas"
-        NEW_REPLICAS=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.replicas")
-        NODES=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
-        HOST_NETWORK=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/default/statefulsets/sts-redis-cluster | jq ".spec.template.spec.hostNetwork" )
+        
+        NEW_REPLICAS=$(get_replicas "sts-redis-cluster")
+        NODES=$(get_nodes)
+        HOST_NETWORK=$(use_hostnetwork "sts-redis-cluster") 
+        
         log_info "Current Pod Replicas : $NEW_REPLICAS"
         log_info "Current Nodes Quantum : $NODES"
 
@@ -494,7 +510,7 @@ function cluster_ctrl_launcher(){
         if test $NEW_REPLICAS -ge $REPLICAS ;then
             if test $NEW_REPLICAS -eq $REPLICAS ;then
                 log_info ">>> Performing Check Redis Cluster..."
-                if test $SHOW_HEALTH_DETAIL == "true" then
+                if test $SHOW_HEALTH_DETAIL == "true" ; then
                     ruby /code/redis/redis-trib.rb check $CLUSTER_NODE:$REDIS_PORT
                 else 
                     ruby /code/redis/redis-trib.rb check --health $CLUSTER_NODE:$REDIS_PORT
@@ -503,14 +519,14 @@ function cluster_ctrl_launcher(){
             else
                 log_info ">>> Performing Add Node To The Redis Cluster"
                 while true ; do
-                    NEW_IP_ARRAY=$(nslookup svc-redis-cluster | grep 'Address' |awk '{print $3}')
+                    NEW_IP_ARRAY=$(nslookup svc-redis-cluster 2>/dev/null | grep 'Address' |awk '{print $3}')
                     log_info "Ready Pod IP : $NEW_IP_ARRAY"
                     new_index=0
                     for ip in $NEW_IP_ARRAY ;
                     do
-                        redis-cli -h ${ip} -p ${REDIS_PORT} INFO > tempinfo.log
+                        redis-cli -h ${ip} -p ${REDIS_PORT} INFO 1>/dev/null 2>&1
                         if test "$?" != "0" ; then
-                            log_error " Connected to $ip failed ,execute break"
+                            log_error " Connected to $ip failed "
                             break
                         fi
                         # CLUSTER_NODE=${ip}
