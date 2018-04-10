@@ -379,9 +379,9 @@ function cluster_launcher(){
             continue
         fi
 
-        log_info ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
+        log_debug ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         if test $CLUSTER_CHECK_RESULT == "0" ; then 
-            log_info ">>> Back up nodes.conf"
+            log_debug ">>> Back up nodes.conf"
             save_relation "old"
         fi
         sleep 10
@@ -598,8 +598,8 @@ echo_info "|                                                                    
 echo_info "+--------------------------------------------------------------------+"
 
 # 安装 redis-trib.rb 的依赖
-gem install --local /rdoc-600.gem
-gem install --local /redis-401.gem
+gem install --local /rdoc-600.gem 2>/dev/null
+gem install --local /redis-401.gem 2>/dev/null
 
 if [[ $MASTER == "true" ]] ; then
     master_launcher
