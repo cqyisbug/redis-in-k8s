@@ -3,8 +3,6 @@
 import os
 import json
 import subprocess
-import sys
-sys.setdefaultencoding('utf-8')
 
 __root_path__ = None
 

@@ -2,8 +2,7 @@
 
 import subprocess
 import json
-import sys
-sys.setdefaultencoding('utf-8')
+
 
 result_tuple = ("0 集群健康",
                 "1 集群节点配置异常,可能有节点正在加入到节点中",

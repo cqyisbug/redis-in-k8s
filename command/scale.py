@@ -3,8 +3,7 @@
 import subprocess
 import os
 import json
-import sys
-sys.setdefaultencoding('utf-8')
+
 
 class ResultInfo(object):
     def __init__(self, code=0, message=""):
