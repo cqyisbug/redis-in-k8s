@@ -6,11 +6,13 @@ import os
 import sys
 import logging
 import click
+sys.setdefaultencoding('utf-8')
 
 logger = logging.getLogger(__name__)
 __version__ = '1.0'
 __author__ = 'caiqyxyx'
 
+click.disable_unicode_literals_warning = True
 pgk_dir = os.path.dirname(os.path.abspath(__file__))
 
 

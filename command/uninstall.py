@@ -4,6 +4,8 @@ import os
 import json
 import time
 import subprocess
+import sys
+sys.setdefaultencoding('utf-8')
 
 
 def uninstall(json_format=False):
