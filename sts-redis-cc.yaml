@@ -14,7 +14,7 @@ spec:
       terminationGracePeriodSeconds: 10
       containers:
       - name: cntr-redis-cc
-        image: YourImage
+        image: $YourImage
         imagePullPolicy: Always
         env:
         - name: CLUSTER_CTRL
