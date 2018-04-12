@@ -22,7 +22,7 @@ spec:
         - name: REDIS_CLUSTER_SLAVE_QUANTUM
           value: "1"
         - name: LOG_LEVEL
-          value: 0
+          value: "0"
         - name: SHOW_HEALTH_DETAIL
           value: "true"
         - name: API_SERVER_ADDR
