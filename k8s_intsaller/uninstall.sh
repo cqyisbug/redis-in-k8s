@@ -9,9 +9,6 @@ for svc in $services ; do
 	systemctl disable $svc
 done
 
-
-
-
 echo "Removing Softwares..."
 
 rpm -qa | grep -E "etcd|docker|flannel|kubernetes" | xargs rpm -e
