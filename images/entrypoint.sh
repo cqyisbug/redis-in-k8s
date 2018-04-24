@@ -30,7 +30,7 @@ if test ! $LOG_LEVEL ; then
 fi
 
 if test ! $SHOW_HEALTH_DETAIL ; then
-    SHOW_HEALTH_DETAIL=true
+    SHOW_HEALTH_DETAIL=false
 fi
 
 function echo_debug(){
