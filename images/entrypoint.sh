@@ -598,12 +598,10 @@ echo_info "|                                                                    
 echo_info "+--------------------------------------------------------------------+"
 
 # 安装 redis-trib.rb 的依赖
-gem install --local /rdoc-600.gem 2>/dev/null
-gem install --local /redis-401.gem 2>/dev/null
-
+gem install --local /rdoc-600.gem 2>/dev/null 1>&2
+gem install --local /redis-401.gem 2>/dev/null 1>&2
 rm -f /rdoc-600.gem
 rm -f /redis-401.gem
-
 
 if [[ $MASTER == "true" ]] ; then
     master_launcher
