@@ -4,7 +4,7 @@
 
 ps -ef | grep redis | awk '{print $2}' | xargs kill -9
 rpm -qa | grep -E "redis|jemalloc" | rpm -e
-
+yum install -y gcc
 
 REDIS_VERSION=4.0.8
 
@@ -13,7 +13,7 @@ command_exists(){
 }
 
 # Listener=$(redis-cli -v)
-if command_exists redis-cli ; then 
+if ! command_exists redis-cli ; then 
 	mkdir -p /tmp/redis
 	cd /tmp/redis
 	curl -O http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz
@@ -21,6 +21,9 @@ if command_exists redis-cli ; then
 	tar -zxf redis-$REDIS_VERSION.tar.gz
 	rpm -ivh *.rpm
 	cd redis-$REDIS_VERSION
+	cd deps
+	make hiredis jemalloc linenoise lua
+	cd ..
 	make MALLOC=$(which jemalloc.sh)
 	make install
 	cp src/redis-trib.rb /usr/bin/redis-trib.rb
