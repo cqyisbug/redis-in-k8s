@@ -398,9 +398,12 @@ if test $# -ne 0 ; then
             # --health 命令不是原生的,对 redis-trib.rb 做过修改
             ruby /code/redis/redis-trib.rb check --health svc-redis-cluster:$REDIS_PORT
             ;;
+        "fix")
+            ruby /code/redis/redis-trib.rb fix svc-redis-cluster:$REDIS_PORT
+            ;;
         *)
             log_error "wrong arguments!"
-        ;;
+            ;;
     esac
     exit 0
 fi
