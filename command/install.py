@@ -4,7 +4,7 @@ import os
 import json
 import subprocess
 
-__root_path__ = None
+__root_path__ = os.path.dirname(os.path.abspath(__file__))
 
 
 class ResultInfo(object):
@@ -100,6 +100,7 @@ def generateYaml(config):
     从模板文件中
     生成yaml文件
     '''
+
 
     data_2_file(
         get_sts_cc()
