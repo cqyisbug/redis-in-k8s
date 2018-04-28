@@ -14,7 +14,7 @@ spec:
       containers:
       - name: cntr-redis-cc
         image: $YourImage
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: CLUSTER_CTRL
           value: "true"
@@ -52,7 +52,7 @@ spec:
       containers:
       - name: cntr-redis-cluster
         image: $YourImage
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: CLUSTER
           value: "true"

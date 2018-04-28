@@ -15,7 +15,7 @@ spec:
       containers:
       - name: cntr-redis-master
         image: $YourImage
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: MASTER
           value: "true"
@@ -65,7 +65,7 @@ spec:
       containers:
       - name: cntr-redis-sentinel
         image: $YourImage
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: SENTINEL
           value: "true"
@@ -103,7 +103,7 @@ spec:
       containers:
       - name: cntr-redis-slave
         image: YourImage
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: SLAVE
           value: "true"
