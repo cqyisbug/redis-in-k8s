@@ -11,18 +11,15 @@
 
 > 相比于其他github上的项目，优势  1. 有集群和哨兵 2种模式  2.集群模式和哨兵模式都支持扩容  3.稳定性更强，本项目支持redis持久化,Pod重启之后集群无需手动干预,自动恢复成集群原先状态,这点在github其他项目中没有看到过类似的操作
 
-这里有三个文件夹目录和若干yaml配置文件，他们都是来帮助搭建redis环境的。(如果需要使用statefulset，请将你的k8s版本提升至1.5以上~,还需要有dns组件)
 
-images 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。语法请参考搜索Docker。redis环境启动规则在run_new.sh 脚本中。
+docker 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。语法请参考搜索Docker。redis环境启动规则在run_new.sh 脚本中。
 ```
-docker build -t $YOUR_TAG .
+docker build -t $YOUR_TAG . && docker push $YOUR_TAG
 ```
 
-k8s_installer 是一个在单节点上安装kubernetes的脚本。使用这个脚本你首先得能连网，因为我没有把其中的rpm包全部下载下来。
+k8s_installer 是github上的kubeasz项目,个人感觉写的很好,推荐一下.
 
-redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本，后续我会优化。
-
-https://github.com/marscqy/redisscript 这是一个python脚本,使用方法仅供参考,Redis.py 中包含了 三个重要函数,分别是install_redis  check_redis scale_redis,用来安装 检查 扩容redis集群
+redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本.
 
 -----
 
@@ -32,12 +29,12 @@ https://github.com/marscqy/redisscript 这是一个python脚本,使用方法仅�
 
 - 1. 进入images文件夹下
 ```
-docker build -t {yourtag} .
+docker build -t {yourtag} . && docker push {yourtag} 
 ```
 
-- 2. 修改sts 开头的yaml文件
+- 2. yaml文件
     - 1. YourImage替换为{yourtag}
-    - 2. sts-redis-cc.yaml 中的API_SERVER_ADDR 值修改为你的apiserver地址
+    - 2. API_SERVER_ADDR 环境变量的值修改为你的apiserver地址
     - 3. 各个yaml中的REDIS_PORT 环境变量表示 redis在pod内使用的端口号,可改可不改
     - 4. 需要持久化? 修改 volume.beta.kubernetes.io/storage-class: "fast" 中的fast 为你的sotrageclass 名字
     - 5. 不需要持久化?在每个yaml中删除如下内容
@@ -66,28 +63,6 @@ docker build -t {yourtag} .
 
 -----
 
-### 对redis-trib.rb 的修改 2018-01-31 
-
-
-> 为 add-node 添加一个auto 命令  
-> 当目前集群中的master都有从节点时,添加的节点为master  
-> 当目前集群中至少存在一个master没有从节点时,添加的节点为slave    
-> 此修改方便redis集群在k8s集群中的扩容，只需要使用kubectl scale sts sts-redis-cluster --replicas new_replicas 命令来完成redis集群的扩容，其中new_replicas 的数值会影响redis集群是否扩容成功
-
-
-```
-redis-trib.rb add-node --auto new_host:new_port existing_host:existing_port
-```
-<img src="https://github.com/marscqy/redis-in-k8s/blob/master/images/add-node.png" width="643px" height="511px" style="float:left" />
-  
-  
-> 为 info 添加一个 detail 命令,使其能够输出完整的集群信息  
-
-```
-redis-trib.rb info --detail host:port
-```  
-<img src="https://github.com/marscqy/redis-in-k8s/blob/master/images/info.jpg" width="787px" height="234px" style="float:left" />
-
 > 为 check新增了一个health命令，能够返回进群状态,输出json形式的信息
 ```
 reids-trib.rb check --health
@@ -102,16 +77,10 @@ reids-trib.rb check --health
 -----
 
 ### 目前我所遇到的问题
-> 目前所有问题都已经解决  
 
-- kubernetes (k8s) 集群外如何访问pod内的Redis？
-    - 添加 NodePort Service ？这是不够的，因为当使用redis集群模式的时候，set 或者 get 或者其他操作，可能会重定向到其他pod，这时你可能会注意到，我用run_new.sh 搭建的集群使用的时headless service，它会重定向到一个集群内的ip，这时候怎么办？    解决办法1.尝试使用其他网络组件  解决办法2.让pod使用node借点的网络配置。给pod添加以下两个属性即可。
-    ```
-            hostNetwork: true
-            dnsPolicy: ClusterFirstWithHostNet
-    ``` 
-- 当使用redis集群模式的时候，动态扩容问题？
-    -  这个问题已经在2018-02-02 解决,缩容不支持,只支持扩容
+- 当statefulset的pod所在的node节点挂了之后,pod无法完成调度,pod的状态变为unknow,此时集群一般情况下能正常使用,但是扩容和卸载操作均会受到影响
+- redis的集群扩容,有过redis运维经验的人一般都知道,redis的作者提供了一个redis-trib的工具,这个工具中的添加节点和迁移slot是两个分开的命令,至于为什么要分开,个人测试了下发现添加完节点之后,就算此时你检测到集群的状态是正常的,立马迁移slot也会出问题,需要等一段时间之后才能进行迁移slot操作
+
 -----
 
 #####  shell 脚本 ^M 错误?
