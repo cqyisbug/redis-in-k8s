@@ -603,6 +603,8 @@ gem install --local /redis-401.gem 2>/dev/null 1>&2
 rm -f /rdoc-600.gem
 rm -f /redis-401.gem
 
+mkdir -p /data/redis
+
 if [[ $MASTER == "true" ]] ; then
     master_launcher
     exit 0
