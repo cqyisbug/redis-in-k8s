@@ -5,15 +5,6 @@
 
 comment
 
-time=$(date "+%Y-%m-%d")
-echo_info "+--------------------------------------------------------------------+"
-echo_info "|                                                                    |"
-echo_info "|\t\t\t Redis-in-Kubernetes"
-echo_info "|\t\t\t Author: caiqyxyx"
-echo_info "|\t\t\t Start Date: $time"
-echo_info "|                                                                    |"
-echo_info "+--------------------------------------------------------------------+"
-
 # define log level, 0:debug 1:info 2:warn 3:error
 
 if test ! $LOG_LEVEL ; then
@@ -413,6 +404,17 @@ gem install --local /rdoc-600.gem 2>/dev/null 1>&2
 gem install --local /redis-401.gem 2>/dev/null 1>&2
 rm -f /rdoc-600.gem
 rm -f /redis-401.gem
+
+time=$(date "+%Y-%m-%d")
+echo_info "+--------------------------------------------------------------------+"
+echo_info "|                                                                    |"
+echo_info "|\t\t\t Redis-in-Kubernetes"
+echo_info "|\t\t\t Author: caiqyxyx"
+echo_info "|\t\t\t Start Date: $time"
+echo_info "|                                                                    |"
+echo_info "+--------------------------------------------------------------------+"
+
+mkdir -p /data/redis
 
 if [[ $CLUSTER == "true" ]] ; then
     cluster_launcher
