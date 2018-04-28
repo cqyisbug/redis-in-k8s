@@ -78,7 +78,7 @@ docker build -t {yourtag} .
 ```
 redis-trib.rb add-node --auto new_host:new_port existing_host:existing_port
 ```
-<img src="https://github.com/marscqy/redis-in-k8s/blob/master/add-node.png" width="643px" height="511px" style="float:left" />
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/images/add-node.png" width="643px" height="511px" style="float:left" />
   
   
 > 为 info 添加一个 detail 命令,使其能够输出完整的集群信息  
@@ -86,7 +86,7 @@ redis-trib.rb add-node --auto new_host:new_port existing_host:existing_port
 ```
 redis-trib.rb info --detail host:port
 ```  
-<img src="https://github.com/marscqy/redis-in-k8s/blob/master/info.jpg" width="787px" height="234px" style="float:left" />
+<img src="https://github.com/marscqy/redis-in-k8s/blob/master/images/info.jpg" width="787px" height="234px" style="float:left" />
 
 > 为 check新增了一个health命令，能够返回进群状态,输出json形式的信息
 ```
