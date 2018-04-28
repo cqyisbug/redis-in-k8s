@@ -12,7 +12,7 @@
 > 相比于其他github上的项目，优势  1. 有集群和哨兵 2种模式  2.集群模式和哨兵模式都支持扩容  3.稳定性更强，本项目支持redis持久化,Pod重启之后集群无需手动干预,自动恢复成集群原先状态,这点在github其他项目中没有看到过类似的操作
 
 
-docker 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。语法请参考搜索Docker。redis环境启动规则在run_new.sh 脚本中。
+docker 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。
 ```
 docker build -t $YOUR_TAG . && docker push $YOUR_TAG
 ```
@@ -59,7 +59,6 @@ docker build -t {yourtag} . && docker push {yourtag}
 
 - 3. 启动集群
     - 1.kubectl create -f {yaml}
-
 
 -----
 
