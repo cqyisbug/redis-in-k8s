@@ -1,0 +1,129 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: dep-redis-ctrl
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: dep-redis-ctrl
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cntr-redis-cc
+        image: $YourImage
+        imagePullPolicy: Always
+        env:
+        - name: CLUSTER_CTRL
+          value: "true"
+        - name: REDIS_CLUSTER_SLAVE_QUANTUM
+          value: "1"
+        - name: LOG_LEVEL
+          value: "0"
+        - name: SHOW_HEALTH_DETAIL
+          value: "true"
+        - name: API_SERVER_ADDR
+          value: "172.20.0.12:8080"
+        - name: REDIS_PORT
+          value: "6380"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: 6380
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sts-redis-cluster
+spec:
+  serviceName: "svc-redis-cluster"
+  replicas: 6
+  template:
+    metadata:
+      labels:
+        name: sts-redis-cluster
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cntr-redis-cluster
+        image: $YourImage
+        imagePullPolicy: Always
+        env:
+        - name: CLUSTER
+          value: "true"
+        - name: REDIS_PORT
+          value: "6380"
+        - name: API_SERVER_ADDR
+          value: "172.20.0.12:8080"
+        - name: LOG_LEVEL
+          value: 0
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: 6380
+        volumeMounts:
+        - name: rediscluster
+          mountPath: /data/redis
+        securityContext:
+          capabilities: {}
+          privileged: true
+  volumeClaimTemplates:
+  - metadata:
+      name: rediscluster
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "fast"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-redis-cluster
+  labels:
+    name: svc-redis-cluster
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  clusterIP: None
+  selector:
+    name: sts-redis-cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-redis-cluster-np
+  labels:
+    name: svc-redis-cluster-np
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+    nodePort: 6379
+  type: NodePort
+  selector:
+    name: sts-redis-cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-redis-cc
+  labels:
+    name: svc-redis-cc
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  clusterIP: None
+  selector:
+    name: sts-redis-cc

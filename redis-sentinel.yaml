@@ -1,0 +1,181 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sts-redis-master
+spec:
+  serviceName: "svc-redis-master"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: sts-redis-master
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cntr-redis-master
+        image: $YourImage
+        imagePullPolicy: Always
+        env:
+        - name: MASTER
+          value: "true"
+        - name: SENTINEL_HOST
+          value: sts-redis-sentinel-0.svc-redis-sentinel
+        - name: SENTINEL_PORT
+          value: "26379"
+        - name: MASTER_PORT
+          value: "6379"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redismaster
+          mountPath: /data/redis
+        securityContext:
+          capabilities: {}
+          privileged: true
+  volumeClaimTemplates:
+  - metadata:
+      name: redismaster
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "fast"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sts-redis-sentinel
+spec:
+  serviceName: "svc-redis-sentinel"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        name: sts-redis-sentinel
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cntr-redis-sentinel
+        image: $YourImage
+        imagePullPolicy: Always
+        env:
+        - name: SENTINEL
+          value: "true"
+        - name: MASTER_HOST
+          value: sts-redis-master-0.svc-redis-master 
+        - name: MASTER_PORT
+          value: "6379"
+        - name: SENTINEL_HOST
+          value: sts-redis-sentinel-0.svc-redis-sentinel
+        - name: SENTINEL_PORT
+          value: "26379"
+        - name: SENTINEL_SVC
+          value: svc-redis-sentinel
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: 26379
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: sts-redis-slave
+spec:
+  serviceName: "svc-redis-slave"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        name: sts-redis-slave
+        environment: test
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: cntr-redis-slave
+        image: YourImage
+        imagePullPolicy: Always
+        env:
+        - name: SLAVE
+          value: "true"
+        - name: MASTER_HOST
+          value: sts-redis-master-0.svc-redis-master
+        - name: MASTER_PORT
+          value: "6379"
+        - name: SENTINEL_HOST
+          value: sts-redis-sentinel-0.svc-redis-sentinel 
+        - name: SENTINEL_PORT
+          value: "26379"
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redisslave
+          mountPath: /data/redis
+        securityContext:
+          capabilities: {}
+          privileged: true
+  volumeClaimTemplates:
+  - metadata:
+      name: redisslave
+      annotations:
+        volume.beta.kubernetes.io/storage-class: "fast"
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-redis-master
+  labels:
+    name: svc-redis-master
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  clusterIP: None
+  selector:
+    name: sts-redis-master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-redis-sentinel
+  labels:
+    name: svc-redis-sentinel
+spec:
+  ports:
+  - port: 26379
+    targetPort: 26379
+  clusterIP: None
+  selector:
+    name: sts-redis-sentinel
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-redis-slave
+  labels:
+    name: svc-redis-slave
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  clusterIP: None
+  selector:
+    name: sts-redis-slave
