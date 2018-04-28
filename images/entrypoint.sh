@@ -191,7 +191,7 @@ function cluster_launcher(){
 
         log_debug ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         if test $CLUSTER_CHECK_RESULT == "0" ; then 
-            log_debug ">>> Back up nodes.conf"
+            log_info ">>> Back up nodes.conf"
             save_relation "old"
         fi
         sleep 10
