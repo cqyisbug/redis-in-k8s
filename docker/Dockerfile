@@ -50,7 +50,7 @@ RUN set -ex; \
 	rm -r /usr/src/redis; \
 	\
     apk del .build-deps ; \
-	apk add --no-cache curl jq 
+	apk add --no-cache curl jq logrotate 
 
 #  安装ruby环境  由于ruby的原因安装gem install redis的时候会稍微报点错,但是这个错误在docker里面会被捕捉到,所以放到shell 脚本里面去了
 #  RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/

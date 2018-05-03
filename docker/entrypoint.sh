@@ -148,6 +148,26 @@ function save_relation(){
     sed -i "s/\"//g" /data/redis/cluster-$file.ip
 }
 
+# 日志处理
+function log_launcher(){
+    {
+        echo  "*       *       *       *       *       logrotate /etc/logrotate.conf "
+    } >> /etc/crontabs/root
+
+    touch /var/log/messages
+
+    cat >> /etc/logrotate.conf <<EOF
+/data/redis/redis.log {
+    daily
+    su root root
+    rotate 4
+    create
+    nocompress
+}
+EOF
+    crond 
+}
+
 
 # 哨兵模式 master节点启动流程代码
 function master_launcher(){
@@ -370,6 +390,8 @@ function cluster_launcher(){
     } >> /data/redis/cluster.conf
 
     redis-server /data/redis/cluster.conf --protected-mode no
+    
+    log_launcher
 
     while true ; do 
         CLUSTER_CHECK_RESULT=$(ruby /code/redis/redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
