@@ -160,9 +160,10 @@ function log_launcher(){
 /data/redis/redis.log {
     daily
     su root root
-    rotate 4
+    rotate 7
     create
     nocompress
+    size 1MB
 }
 EOF
     crond 
@@ -386,7 +387,7 @@ function cluster_launcher(){
         echo "cluster-announce-ip ${MY_POD_IP}" 
         echo "cluster-announce-port ${REDIS_PORT}" 
 
-        echo "logfile /data/redis/redis.log" 
+        # echo "logfile /data/redis/redis.log" 
     } >> /data/redis/cluster.conf
 
     redis-server /data/redis/cluster.conf --protected-mode no
