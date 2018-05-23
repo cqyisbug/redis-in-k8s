@@ -56,15 +56,18 @@ python redis.py scale [new_replicas] (集群扩容)
 
 -----
 
-> 为 check新增了一个health命令，能够返回进群状态,输出json形式的信息
-```
-reids-trib.rb check --health
-```
-- {"code":0,"message":"redis集群健康"}
-- {"code":1,"message":"集群节点配置异常,可能有节点正在加入到节点中"}
-- {"code":2,"message":"集群中有节点正在迁移数据"}
-- {"code":3,"message":"集群中有节点正在导入数据"}
-- {"code":4,"message":"集群中存在尚未分配到节点上的数据槽"}
+- install
+![install](images\install.png)
+
+- check
+![check](images\check.jpg)
+
+- 控制节点输出
+![installation_info](images\install_info.jpg)
+
+- scale
+![之前](images\pre_scale.jpg)
+![之后](images\after_sacle.jpg)
 
 -----
 ### 文件夹说明
