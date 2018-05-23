@@ -1,4 +1,4 @@
 {
     "python.pythonPath": "C:\\Users\\c15367\\AppData\\Local\\Continuum\\Anaconda3\\python.exe",
-    "python.formatting.provider": "yapf"
+    "python.formatting.provider": "autopep8"
 }

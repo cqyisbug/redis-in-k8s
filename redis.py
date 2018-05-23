@@ -39,7 +39,8 @@ def build_redis_yaml(config):
         if os.path.isfile(os.path.join(template_path, file_list[i])):
             with io.open(os.path.join(template_path, file_list[i]), 'r', encoding='utf-8') as f:
                 template = jinja2.Template(f.read())
-                write_file(template.render(config), os.path.join(yaml_path, file_list[i]))
+                write_file(template.render(config),
+                           os.path.join(yaml_path, file_list[i]))
 
 
 def json_load(json_file):
@@ -96,19 +97,21 @@ def exists_resource(resource, pattern, namespace="default", bool_result=True):
             else:
                 return 0
         cmd = "/root/local/bin/kubectl get " + \
-              str(resource) + " -n " + namespace + " | grep \"" + str(pattern) + "\" | wc -l 2>/dev/null"
+              str(resource) + " -n " + namespace + " | grep \"" + \
+            str(pattern) + "\" | wc -l 2>/dev/null"
         run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         quantum = int(run.stdout.read().replace('\n', ''))
         if bool_result:
             return quantum > 0
         else:
             return quantum
-    except Exception as e:
+    except Exception:
         # print("[ERROR] {}".format(e.message))
         if bool_result:
             return False
         else:
             return 0
+
 
 def install_redis():
     """
@@ -121,17 +124,16 @@ def install_redis():
             print("Redis cluster already exists!")
             return False
 
-
         config = json_load('redis.json')
         build_redis_yaml(config)
 
         # install redis component
         result = os.system(
-                  "/root/local/bin/kubectl create -f #path#/yaml/"
-                  .replace("#path#", current_path)
-                  )
+            "/root/local/bin/kubectl create -f #path#/yaml/"
+            .replace("#path#", current_path)
+        )
 
-        if result != 0 :
+        if result != 0:
             return False
 
         # check redis status
@@ -151,17 +153,16 @@ def uninstall_redis():
     :return: boolean ,the uninstallation result
     """
     config = json_load("redis.json")
-    result  = os.system(
+    result = os.system(
         "/root/local/bin/kubectl get statefulset -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete statefulset ;"
         "/root/local/bin/kubectl get deployment -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete deployment ;"
         "/root/local/bin/kubectl get service -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete service"
-        )
-
+    )
 
     if config["persistent_flag"]:
         result = os.system(
             "/root/local/bin/kubectl get pvc -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete pvc")
-        if result == 0 :
+        if result == 0:
             while True:
                 if exists_resource("endpoints", "redis-data"):
                     time.sleep(2)
@@ -175,7 +176,7 @@ def uninstall_redis():
 def scale_redis(new_replicas):
     """
     Scale redis statefulset's replicas
-	:new_replicas: int , the new replcias of redis
+        :new_replicas: int , the new replcias of redis
     :return: boolean ,the scale result
     """
     try:
@@ -183,7 +184,7 @@ def scale_redis(new_replicas):
         new_replicas = int(new_replicas)
 
         # check out redis
-        if  not check_redis(return_code=False):
+        if not check_redis(return_code=False):
             print("making sure that your redis cluster is healthy.")
             return False
 
@@ -206,10 +207,12 @@ def scale_redis(new_replicas):
             return False
 
         if old_replicas < new_replicas:
-            result = os.system("/root/local/bin/kubectl scale statefulset sts-redis-cluster --replicas={}".format(new_replicas))
-            if result == 0 :
+            result = os.system(
+                "/root/local/bin/kubectl scale statefulset sts-redis-cluster --replicas={}".format(new_replicas))
+            if result == 0:
                 config["redis_replicas"] = str(new_replicas)
-                write_file(json.dumps(config, indent=1), os.path.join(current_path, "redis.json"))
+                write_file(json.dumps(config, indent=1),
+                           os.path.join(current_path, "redis.json"))
                 return True
             else:
                 return False
@@ -262,21 +265,23 @@ output.append("|  3   |     Some slots in importing state     |")
 output.append("|  4   |   Not all slots are covered by nodes  |")
 output.append("|  5   |    Can not connect to redis cluster   |")
 
+
 def print_chosen(line):
     out = "\033[1;31;40m"+str(line)+"   < Current State \033[0m"
     print(out)
 
+
 if __name__ == '__main__':
     if len(sys.argv) == 2 and sys.argv[1] == "install":
         if install_redis():
-            print ("redis installed successfully!")
+            print("redis installed successfully!")
         else:
-            print ("redis installed failed!")
+            print("redis installed failed!")
     elif len(sys.argv) == 2 and sys.argv[1] == "uninstall":
         if uninstall_redis():
-            print ("redis uninstalled successfully!")
+            print("redis uninstalled successfully!")
         else:
-            print ("redis uninstalled failed!")
+            print("redis uninstalled failed!")
     elif len(sys.argv) == 2 and sys.argv[1] == "check":
         code = check_redis(return_code=True)
         print("+------+---------------------------------------+")
@@ -292,11 +297,11 @@ if __name__ == '__main__':
     elif len(sys.argv) == 3 and sys.argv[1] == "scale":
         try:
             if scale_redis(int(sys.argv[2])):
-                print ("redis scaled successfully!")
+                print("redis scaled successfully!")
             else:
-                print ("redis scaled failed!")
+                print("redis scaled failed!")
         except Exception:
-            print ("redis scaled failed!")
+            print("redis scaled failed!")
     else:
         print(
             "install (install redis cluster) \n"
