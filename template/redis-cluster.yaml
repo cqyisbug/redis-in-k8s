@@ -48,6 +48,8 @@ spec:
         name: sts-redis-cluster
         app: redis
     spec:
+      hostNetwork: {{ hostnetwork }}
+      dnsPolicy: ClusterFirstWithHostNet
       terminationGracePeriodSeconds: 10
       containers:
       - name: cntr-redis-cluster

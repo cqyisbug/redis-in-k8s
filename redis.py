@@ -113,6 +113,35 @@ def exists_resource(resource, pattern, namespace="default", bool_result=True):
             return 0
 
 
+def check_config(config):
+    try:
+        # redis_replicas >= (pre_master_replicas+1)*3
+        if int(config["redis_replicas"]) < (int(config["pre_master_replicas"])+1)*3 or int(config["redis_replicas"]) < 0 or int(config["pre_master_replicas"]) < 0:
+            print("make sure redis_replicas >= (pre_master_replicas+1)*3 > 0")
+            return False
+
+        # 0<= log_level <= 3
+        if int(config["log_level"]) < 0 or int(config["log_level"]) > 3 :
+            print("make sure 0 <= log_level <= 3")
+            return False
+
+        # hostnetowrk
+        if str(config["hostnetowrk"]).lower == "true":
+            if exists_resource("node","Ready",bool_result=False) < int(config["redis_replicas"]) :
+                print("in hostnetowrk mode,make sure nodes >= redis_replicas")
+                return False
+
+        # redis_data_size > 0 
+        if int(config["redis_data_size"]) <= 0 and config["persistent_flag"]:
+            print("make sure redis_data_size > 0")
+            return False
+                
+        return True
+    except Exception:
+        print("Wrong arguments!")
+        return False
+
+
 def install_redis():
     """
     Install redis component in kubernetes.
@@ -125,6 +154,10 @@ def install_redis():
             return False
 
         config = json_load('redis.json')
+
+        if not check_config(config):
+            return False
+
         build_redis_yaml(config)
 
         # install redis component
