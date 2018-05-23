@@ -57,17 +57,17 @@ python redis.py scale [new_replicas] (集群扩容)
 -----
 
 - install
-![install](images\install.png)
+![install](https://raw.githubusercontent.com/marscqy/redis-in-k8s/master/images/install.jpg)
 
 - check
-![check](images\check.jpg)
+![check](https://raw.githubusercontent.com/marscqy/redis-in-k8s/master/images/check.jpg)
 
 - 控制节点输出
-![installation_info](images\install_info.jpg)
+![installation_info](https://raw.githubusercontent.com/marscqy/redis-in-k8s/master/images/install_info.jpg)
 
 - scale
-![之前](images\pre_scale.jpg)
-![之后](images\after_sacle.jpg)
+![之前](https://raw.githubusercontent.com/marscqy/redis-in-k8s/master/images/pre_scale.jpg)
+![之后](https://raw.githubusercontent.com/marscqy/redis-in-k8s/master/images/after_sacle.jpg)
 
 -----
 ### 文件夹说明
