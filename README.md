@@ -3,62 +3,56 @@
 
 <img src="https://github.com/marscqy/redis-in-k8s/blob/master/images/k8s-logo.png" width="100px" style="float:left" /><img src="https://github.com/marscqy/redis-in-k8s/blob/master/images/redis-logo.jpg" width="100px" style="margin-left:70px;float:left"/>
 
-
 -----
 
-   
 这是一个帮助你在Kubernetes(K8S)环境中搭建redis集群和哨兵模式的样例。
 
-> 相比于其他github上的项目，优势  1. 有集群和哨兵 2种模式  2.集群模式和哨兵模式都支持扩容  3.稳定性更强，本项目支持redis持久化,Pod重启之后集群无需手动干预,自动恢复成集群原先状态,这点在github其他项目中没有看到过类似的操作
-
-
-docker 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。
-```
-docker build -t $YOUR_TAG . && docker push $YOUR_TAG
-```
-
-k8s_installer 是github上的kubeasz项目,个人感觉写的很好,推荐一下.
-
-redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本.
+> 相比于其他github上的项目，优势有如下几点
+> 1. 有集群和哨兵 2种模式  
+> 2. 集群模式和哨兵模式都支持扩容  
+> 3. 稳定性更强，本项目支持redis持久化,Pod重启之后集群无需手动干预,自动恢复。这点独一无二。
 
 -----
 
-### 使用说明
+### redis_cluster安装说明，sentinel的以后再补
 
 >假设你已安装k8s和docker,{} 表示变量,需要你自己填
 
-- 1. 进入images文件夹下
+- 1. 进入docker文件夹下
 ```
 docker build -t {yourtag} . && docker push {yourtag} 
 ```
 
-- 2. yaml文件
-    - 1. YourImage替换为{yourtag}
-    - 2. API_SERVER_ADDR 环境变量的值修改为你的apiserver地址
-    - 3. 各个yaml中的REDIS_PORT 环境变量表示 redis在pod内使用的端口号,可改可不改
-    - 4. 需要持久化? 修改 volume.beta.kubernetes.io/storage-class: "fast" 中的fast 为你的sotrageclass 名字
-    - 5. 不需要持久化?在每个yaml中删除如下内容
+- 2. 使用pip安装python依赖
 ```
-        volumeMounts:
-        - name: rediscluster
-          mountPath: /data/redis
-        securityContext:
-          capabilities: {}
-          privileged: true
-  volumeClaimTemplates:
-  - metadata:
-      name: rediscluster
-      annotations:
-        volume.beta.kubernetes.io/storage-class: "fast"
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 1Gi
+pip install jinja2
 ```
 
-- 3. 启动集群
-    - 1.kubectl create -f {yaml}
+- 3. 修改redis.json
+```
+{
+  "api_server_addr":"172.27.25.35:8080",   apiserver的地址
+  "redis_replicas": "3",                   sts-redis-cluster 的pod数量，也就是你redis的节点数，最小是3
+  "redis_server_port": 6380,               redis服务占用的端口
+  "redis_server_nodeport":6379,            nodeport的redis端口，和redis_server_port尽量不一样，一样的话你可以试试，你会吃亏的，这里不细讲了
+  "redis_docker_image": "redis:local",     第一步你打完镜像的名字
+  "persistent_flag": false,                是否开启持久化
+  "redis_data_size": 2,                    持久化存储卷的大小，单位Gi
+  "log_level":0,                           0:debug 1:info 2:warn 3:error
+  "pre_master_replicas":0                  这个参数和redis_replicas有关，表示redis集群中每个主节点的从节点数量，和redis_replicas 满足关系式  redis_replicas >= (pre_master_replicas + 1)*3
+}
+
+```
+
+- 4. 运行redis.py
+```
+python redis.py install （安装）
+python redis.py uninstall （卸载）
+python redis.py check (检查集群)
+python redis.py scale [new_replicas] (集群扩容)
+
+```
+
 
 -----
 
@@ -71,6 +65,18 @@ reids-trib.rb check --health
 - {"code":2,"message":"集群中有节点正在迁移数据"}
 - {"code":3,"message":"集群中有节点正在导入数据"}
 - {"code":4,"message":"集群中存在尚未分配到节点上的数据槽"}
+
+-----
+### 文件夹说明
+
+docker 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。
+```
+docker build -t $YOUR_TAG . && docker push $YOUR_TAG
+```
+
+k8s_installer 是github上的kubeasz项目,个人感觉写的很好,推荐一下.
+
+redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本.
 
 
 -----
