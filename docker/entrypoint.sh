@@ -620,14 +620,19 @@ fi
 
 time=$(date "+%Y-%m-%d")
 
-echo_info "+--------------------------------------------------------------------+"
-echo_info "|                                                                    |"
-echo_info "|\t\t\t Redis-in-Kubernetes"
-echo_info "|\t\t\t Author: caiqyxyx"
-echo_info "|\t\t\t Github: https://github.com/marscqy/redis-in-k8s"
-echo_info "|\t\t\t Start Date: $time"
-echo_info "|                                                                    |"
-echo_info "+--------------------------------------------------------------------+"
+if [[ $MASTER == "true" ]] || [[ $SLAVE == "true" ]] || [[ $SENTINEL == "true" ]]; then
+    sed -i "s/{mode}/sentinel/g" /code/redis/logo.txt
+fi
+
+if [[ $CLUSTER == "true" ]] ||  [[ $CLUSTER_CTRL == "true" ]]; then
+    sed -i "s/{mode}/cluster/g" /code/redis/logo.txt
+fi
+
+sed -i "s/{redis_version}/${REDIS_VERSION}/g" /code/redis/logo.txt
+sed -i "s/{port}/${REDIS_PORT}/g" /code/redis/logo.txt
+sed -i "s/{date}/${time}/g" /code/redis/logo.txt
+
+cat /code/redis/logo.txt
 
 # 安装 redis-trib.rb 的依赖
 gem install --local /rdoc-600.gem 2>/dev/null 1>&2

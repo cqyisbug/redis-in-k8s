@@ -71,6 +71,7 @@ COPY entrypoint.sh /code/redis/entrypoint.sh
 COPY redis-4.0.1.gem /redis-401.gem
 COPY rdoc-6.0.0.gem /rdoc-600.gem
 COPY redis-trib.rb /code/redis/redis-trib.rb
+COPY logo.txt  /code/redis/logo.txt
 
 
 RUN chmod +x /code/redis/entrypoint.sh ;\
