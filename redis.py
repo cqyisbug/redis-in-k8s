@@ -170,7 +170,7 @@ def install_redis():
             return False
 
         # check redis status
-        while check_redis(return_code=False) != 0:
+        while check_redis(return_code=True) != 0:
             print("Redis is not Ready!")
             time.sleep(5)
 
