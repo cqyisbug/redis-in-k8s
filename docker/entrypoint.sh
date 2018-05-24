@@ -163,8 +163,17 @@ function log_launcher(){
     rotate 7
     create
     nocompress
-    size 1MB
 }
+
+# /data/redis/redis.log {
+#     daily
+#     su root root
+#     rotate 7
+#     create
+#     nocompress
+#     size 10MB
+# }
+
 EOF
     crond 
 }
