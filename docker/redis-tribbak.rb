@@ -33,18 +33,18 @@ $verbose = false
 
 def xputs(s)
     case s[0..2]
-        when ">>>"
-            color = "29;1"
-        when "[ER"
-            color = "31;1"
-        when "[WA"
-            color = "31;1"
-        when "[OK"
-            color = "32"
-        when "[FA", "***"
-            color = "33"
-        else
-            color = nil
+    when ">>>"
+        color="29;1"
+    when "[ER"
+        color="31;1"
+    when "[WA"
+        color="31;1"
+    when "[OK"
+        color="32"
+    when "[FA","***"
+        color="33"
+    else
+        color=nil
     end
 
     color = nil if ENV['TERM'] != "xterm"
@@ -58,8 +58,8 @@ class ClusterNode
     def initialize(addr)
         s = addr.split("@")[0].split(":")
         if s.length < 2
-            puts "Invalid IP or Port (given as #{addr}) - use IP:Port format"
-            exit 1
+           puts "Invalid IP or Port (given as #{addr}) - use IP:Port format"
+           exit 1
         end
         port = s.pop # removes port from split array
         ip = s.join(":") # if s.length > 1 here, it's IPv6, so restore address
@@ -91,7 +91,7 @@ class ClusterNode
         "#{@info[:host]}:#{@info[:port]}"
     end
 
-    def connect(o = {})
+    def connect(o={})
         return if @r
         print "Connecting to node #{self}: " if $verbose
         STDOUT.flush
@@ -122,13 +122,13 @@ class ClusterNode
         end
     end
 
-    def load_info(o = {})
+    def load_info(o={})
         self.connect
         nodes = @r.cluster("nodes").split("\n")
-        nodes.each {|n|
+        nodes.each{|n|
             # name addr flags role ping_sent ping_recv link_status slots
             split = n.split
-            name, addr, flags, master_id, ping_sent, ping_recv, config_epoch, link_status = split[0..6]
+            name,addr,flags,master_id,ping_sent,ping_recv,config_epoch,link_status = split[0..6]
             slots = split[8..-1]
             info = {
                 :name => name,
@@ -144,25 +144,25 @@ class ClusterNode
             if info[:flags].index("myself")
                 @info = @info.merge(info)
                 @info[:slots] = {}
-                slots.each {|s|
+                slots.each{|s|
                     if s[0..0] == '['
                         if s.index("->-") # Migrating
-                            slot, dst = s[1..-1].split("->-")
+                            slot,dst = s[1..-1].split("->-")
                             @info[:migrating][slot.to_i] = dst
                         elsif s.index("-<-") # Importing
-                            slot, src = s[1..-1].split("-<-")
+                            slot,src = s[1..-1].split("-<-")
                             @info[:importing][slot.to_i] = src
                         end
                     elsif s.index("-")
-                        start, stop = s.split("-")
+                        start,stop = s.split("-")
                         self.add_slots((start.to_i)..(stop.to_i))
                     else
                         self.add_slots((s.to_i)..(s.to_i))
                     end
                 } if slots
                 @dirty = false
-                @r.cluster("info").split("\n").each {|e|
-                    k, v = e.split(":")
+                @r.cluster("info").split("\n").each{|e|
+                    k,v=e.split(":")
                     k = k.to_sym
                     v.chop!
                     if k != :cluster_state
@@ -178,7 +178,7 @@ class ClusterNode
     end
 
     def add_slots(slots)
-        slots.each {|s|
+        slots.each{|s|
             @info[:slots][s] = :new
         }
         @dirty = true
@@ -193,7 +193,7 @@ class ClusterNode
         return if !@dirty
         if @info[:replicate]
             begin
-                @r.cluster("replicate", @info[:replicate])
+                @r.cluster("replicate",@info[:replicate])
             rescue
                 # If the cluster did not already joined it is possible that
                 # the slave does not know the master node yet. So on errors
@@ -203,13 +203,13 @@ class ClusterNode
             end
         else
             new = []
-            @info[:slots].each {|s, val|
+            @info[:slots].each{|s,val|
                 if val == :new
                     new << s
                     @info[:slots][s] = true
                 end
             }
-            @r.cluster("addslots", *new)
+            @r.cluster("addslots",*new)
         end
         @dirty = false
     end
@@ -228,11 +228,11 @@ class ClusterNode
         # As we want to aggregate adjacent slots we convert all the
         # slot integers into ranges (with just one element)
         # So we have something like [1..1,2..2, ... and so forth.
-        slots.map! {|x| x..x}
+        slots.map!{|x| x..x}
 
         # Finally we group ranges with adjacent elements.
-        slots = slots.reduce([]) {|a, b|
-            if !a.empty? && b.first == (a[-1].last) + 1
+        slots = slots.reduce([]) {|a,b|
+            if !a.empty? && b.first == (a[-1].last)+1
                 a[0..-2] + [(a[-1].first)..(b.last)]
             else
                 a + [b]
@@ -242,7 +242,7 @@ class ClusterNode
         # Now our task is easy, we just convert ranges with just one
         # element into a number, and a real range into a start-end format.
         # Finally we join the array using the comma as separator.
-        slots = slots.map {|x|
+        slots = slots.map{|x|
             x.count == 1 ? x.first.to_s : "#{x.first}-#{x.last}"
         }.join(",")
 
@@ -251,9 +251,9 @@ class ClusterNode
         if self.info[:replicate] and @dirty
             is = "S: #{self.info[:name]} #{self.to_s}"
         else
-            is = "#{role}: #{self.info[:name]} #{self.to_s}\n" +
-                "   slots:#{slots} (#{self.slots.length} slots) " +
-                "#{(self.info[:flags] - ["myself"]).join(",")}"
+            is = "#{role}: #{self.info[:name]} #{self.to_s}\n"+
+            "   slots:#{slots} (#{self.slots.length} slots) "+
+            "#{(self.info[:flags]-["myself"]).join(",")}"
         end
         if self.info[:replicate]
             is += "\n   replicates #{info[:replicate]}"
@@ -268,11 +268,11 @@ class ClusterNode
     # by Redis Cluster.
     def get_config_signature
         config = []
-        @r.cluster("nodes").each_line {|l|
+        @r.cluster("nodes").each_line{|l|
             s = l.split
             slots = s[8..-1].select {|x| x[0..0] != "["}
             next if slots.length == 0
-            config << s[0] + ":" + (slots.sort.join(","))
+            config << s[0]+":"+(slots.sort.join(","))
         }
         config.sort.join("|")
     end
@@ -300,9 +300,9 @@ class RedisTrib
 
     def check_arity(req_args, num_args)
         if ((req_args > 0 and num_args != req_args) ||
-            (req_args < 0 and num_args < req_args.abs))
-            xputs "[ERR] Wrong number of arguments for specified sub command"
-            exit 1
+           (req_args < 0 and num_args < req_args.abs))
+           xputs "[ERR] Wrong number of arguments for specified sub command"
+           exit 1
         end
     end
 
@@ -321,7 +321,7 @@ class RedisTrib
 
     # Return the node with the specified ID or Nil.
     def get_node_by_name(name)
-        @nodes.each {|n|
+        @nodes.each{|n|
             return n if n.info[:name] == name.downcase
         }
         return nil
@@ -333,7 +333,7 @@ class RedisTrib
     def get_node_by_abbreviated_name(name)
         l = name.length
         candidates = []
-        @nodes.each {|n|
+        @nodes.each{|n|
             if n.info[:name][0...l] == name.downcase
                 candidates << n
             end
@@ -346,41 +346,14 @@ class RedisTrib
     # in the cluster. If there are multiple masters with the same smaller
     # number of replicas, one at random is returned.
     def get_master_with_least_replicas
-        masters = @nodes.select {|n| n.has_flag? "master"}
-        sorted = masters.sort {|a, b|
+        masters = @nodes.select{|n| n.has_flag? "master"}
+        sorted = masters.sort{|a,b|
             a.info[:replicas].length <=> b.info[:replicas].length
         }
         sorted[0]
     end
 
-    def check_cluster_health(opt = {})
-        # 0 集群健康
-        # 1 集群节点配置异常,可能有节点正在加入到节点中
-        # 2 集群中有节点正在迁移数据
-        # 3 集群中有节点正在导入数据
-        # 4 集群中存在尚未分配到节点上的数据槽
-
-        return '{"code":1,"message":"集群节点配置异常,可能有节点正在加入到节点中"}' if !is_config_consistent?
-
-        open_slots = []
-        @nodes.each {|n|
-            if n.info[:migrating].size > 0
-                return '{"code":2,"message":"集群中有节点正在迁移数据"}'
-            end
-            if n.info[:importing].size > 0
-                return '{"code":3,"message":"集群中有节点正在导入数据"}'
-            end
-        }
-
-        slots = covered_slots
-        if slots.length == ClusterHashSlots
-            return '{"code":0,"message":"redis集群健康"}'
-        else
-            return '{"code":4,"message":"集群中存在尚未分配到节点上的数据槽"}'
-        end
-    end
-
-    def check_cluster(opt = {})
+    def check_cluster(opt={})
         xputs ">>> Performing Cluster Check (using node #{@nodes[0]})"
         show_nodes if !opt[:quiet]
         check_config_consistency
@@ -388,43 +361,27 @@ class RedisTrib
         check_slots_coverage
     end
 
-    def show_cluster_info(opt)
-        if opt["detail"]
-            masters = 0
-            keys = 0
-            @nodes.each {|n|
-                show_node_detail(n)
-                if n.has_flag?("master")
-                    masters += 1
-                    keys += n.r.dbsize
-                end
-                
-            }
-            xputs "[OK] #{keys} keys in #{masters} masters."
-            keys_per_slot = sprintf("%.2f", keys / 16384.0)
-            puts "#{keys_per_slot} keys per slot on average."
-        else
-            masters = 0
-            keys = 0
-            @nodes.each {|n|
-                if n.has_flag?("master")
-                    puts "#{n} (#{n.info[:name][0...8]}...) -> #{n.r.dbsize} keys | #{n.slots.length} slots | " +
-                             "#{n.info[:replicas].length} slaves."
-                    masters += 1
-                    keys += n.r.dbsize
-                end
-            }
-            xputs "[OK] #{keys} keys in #{masters} masters."
-            keys_per_slot = sprintf("%.2f", keys / 16384.0)
-            puts "#{keys_per_slot} keys per slot on average."
-        end
+    def show_cluster_info
+        masters = 0
+        keys = 0
+        @nodes.each{|n|
+            if n.has_flag?("master")
+                puts "#{n} (#{n.info[:name][0...8]}...) -> #{n.r.dbsize} keys | #{n.slots.length} slots | "+
+                     "#{n.info[:replicas].length} slaves."
+                masters += 1
+                keys += n.r.dbsize
+            end
+        }
+        xputs "[OK] #{keys} keys in #{masters} masters."
+        keys_per_slot = sprintf("%.2f",keys/16384.0)
+        puts "#{keys_per_slot} keys per slot on average."
     end
 
     # Merge slots of every known node. If the resulting slots are equal
     # to ClusterHashSlots, then all slots are served.
     def covered_slots
         slots = {}
-        @nodes.each {|n|
+        @nodes.each{|n|
             slots = slots.merge(n.slots)
         }
         slots
@@ -445,7 +402,7 @@ class RedisTrib
     def check_open_slots
         xputs ">>> Check for open slots..."
         open_slots = []
-        @nodes.each {|n|
+        @nodes.each{|n|
             if n.info[:migrating].size > 0
                 cluster_error \
                     "[WARNING] Node #{n} has slots in migrating state (#{n.info[:migrating].keys.join(",")})."
@@ -462,15 +419,15 @@ class RedisTrib
             xputs "[WARNING] The following slots are open: #{open_slots.join(",")}"
         end
         if @fix
-            open_slots.each {|slot| fix_open_slot slot}
+            open_slots.each{|slot| fix_open_slot slot}
         end
     end
 
     def nodes_with_keys_in_slot(slot)
         nodes = []
-        @nodes.each {|n|
+        @nodes.each{|n|
             next if n.has_flag?("slave")
-            nodes << n if n.r.cluster("getkeysinslot", slot, 1).length > 0
+            nodes << n if n.r.cluster("getkeysinslot",slot,1).length > 0
         }
         nodes
     end
@@ -485,25 +442,25 @@ class RedisTrib
         # 2) A single node has keys for this slot.
         # 3) Multiple nodes have keys for this slot.
         slots = {}
-        not_covered.each {|slot|
+        not_covered.each{|slot|
             nodes = nodes_with_keys_in_slot(slot)
             slots[slot] = nodes
             xputs "Slot #{slot} has keys in #{nodes.length} nodes: #{nodes.join(", ")}"
         }
 
-        none = slots.select {|k, v| v.length == 0}
-        single = slots.select {|k, v| v.length == 1}
-        multi = slots.select {|k, v| v.length > 1}
+        none = slots.select {|k,v| v.length == 0}
+        single = slots.select {|k,v| v.length == 1}
+        multi = slots.select {|k,v| v.length > 1}
 
         # Handle case "1": keys in no node.
         if none.length > 0
             xputs "The folowing uncovered slots have no keys across the cluster:"
             xputs none.keys.join(",")
             yes_or_die "Fix these slots by covering with a random node?"
-            none.each {|slot, nodes|
+            none.each{|slot,nodes|
                 node = @nodes.sample
                 xputs ">>> Covering slot #{slot} with #{node}"
-                node.r.cluster("addslots", slot)
+                node.r.cluster("addslots",slot)
             }
         end
 
@@ -512,9 +469,9 @@ class RedisTrib
             xputs "The folowing uncovered slots have keys in just one node:"
             puts single.keys.join(",")
             yes_or_die "Fix these slots by covering with those nodes?"
-            single.each {|slot, nodes|
+            single.each{|slot,nodes|
                 xputs ">>> Covering slot #{slot} with #{nodes[0]}"
-                nodes[0].r.cluster("addslots", slot)
+                nodes[0].r.cluster("addslots",slot)
             }
         end
 
@@ -523,20 +480,20 @@ class RedisTrib
             xputs "The folowing uncovered slots have keys in multiple nodes:"
             xputs multi.keys.join(",")
             yes_or_die "Fix these slots by moving keys into a single node?"
-            multi.each {|slot, nodes|
-                target = get_node_with_most_keys_in_slot(nodes, slot)
+            multi.each{|slot,nodes|
+                target = get_node_with_most_keys_in_slot(nodes,slot)
                 xputs ">>> Covering slot #{slot} moving keys to #{target}"
 
-                target.r.cluster('addslots', slot)
-                target.r.cluster('setslot', slot, 'stable')
-                nodes.each {|src|
+                target.r.cluster('addslots',slot)
+                target.r.cluster('setslot',slot,'stable')
+                nodes.each{|src|
                     next if src == target
                     # Set the source node in 'importing' state (even if we will
                     # actually migrate keys away) in order to avoid receiving
                     # redirections for MIGRATE.
-                    src.r.cluster('setslot', slot, 'importing', target.info[:name])
-                    move_slot(src, target, slot, :dots => true, :fix => true, :cold => true)
-                    src.r.cluster('setslot', slot, 'stable')
+                    src.r.cluster('setslot',slot,'importing',target.info[:name])
+                    move_slot(src,target,slot,:dots=>true,:fix=>true,:cold=>true)
+                    src.r.cluster('setslot',slot,'stable')
                 }
             }
         end
@@ -545,9 +502,9 @@ class RedisTrib
     # Return the owner of the specified slot
     def get_slot_owners(slot)
         owners = []
-        @nodes.each {|n|
+        @nodes.each{|n|
             next if n.has_flag?("slave")
-            n.slots.each {|s, _|
+            n.slots.each{|s,_|
                 owners << n if s == slot
             }
         }
@@ -556,12 +513,12 @@ class RedisTrib
 
     # Return the node, among 'nodes' with the greatest number of keys
     # in the specified slot.
-    def get_node_with_most_keys_in_slot(nodes, slot)
+    def get_node_with_most_keys_in_slot(nodes,slot)
         best = nil
         best_numkeys = 0
-        @nodes.each {|n|
+        @nodes.each{|n|
             next if n.has_flag?("slave")
-            numkeys = n.r.cluster("countkeysinslot", slot)
+            numkeys = n.r.cluster("countkeysinslot",slot)
             if numkeys > best_numkeys || best == nil
                 best = n
                 best_numkeys = numkeys
@@ -583,13 +540,13 @@ class RedisTrib
 
         migrating = []
         importing = []
-        @nodes.each {|n|
+        @nodes.each{|n|
             next if n.has_flag? "slave"
             if n.info[:migrating][slot]
                 migrating << n
             elsif n.info[:importing][slot]
                 importing << n
-            elsif n.r.cluster("countkeysinslot", slot) > 0 && n != owner
+            elsif n.r.cluster("countkeysinslot",slot) > 0 && n != owner
                 xputs "*** Found keys about slot #{slot} in node #{n}!"
                 importing << n
             end
@@ -601,7 +558,7 @@ class RedisTrib
         # number of keys, among the set of migrating / importing nodes.
         if !owner
             xputs ">>> Nobody claims ownership, selecting an owner..."
-            owner = get_node_with_most_keys_in_slot(@nodes, slot)
+            owner = get_node_with_most_keys_in_slot(@nodes,slot)
 
             # If we still don't have an owner, we can't fix it.
             if !owner
@@ -611,8 +568,8 @@ class RedisTrib
 
             # Use ADDSLOTS to assign the slot.
             puts "*** Configuring #{owner} as the slot owner"
-            owner.r.cluster("setslot", slot, "stable")
-            owner.r.cluster("addslots", slot)
+            owner.r.cluster("setslot",slot,"stable")
+            owner.r.cluster("addslots",slot)
             # Make sure this information will propagate. Not strictly needed
             # since there is no past owner, so all the other nodes will accept
             # whatever epoch this node will claim the slot with.
@@ -633,11 +590,11 @@ class RedisTrib
         # in migrating state, since migrating is a valid state only for
         # slot owners.
         if owners.length > 1
-            owner = get_node_with_most_keys_in_slot(owners, slot)
-            owners.each {|n|
+            owner = get_node_with_most_keys_in_slot(owners,slot)
+            owners.each{|n|
                 next if n == owner
-                n.r.cluster('delslots', slot)
-                n.r.cluster('setslot', slot, 'importing', owner.info[:name])
+                n.r.cluster('delslots',slot)
+                n.r.cluster('setslot',slot,'importing',owner.info[:name])
                 importing.delete(n) # Avoid duplciates
                 importing << n
             }
@@ -647,25 +604,25 @@ class RedisTrib
         # Case 1: The slot is in migrating state in one slot, and in
         #         importing state in 1 slot. That's trivial to address.
         if migrating.length == 1 && importing.length == 1
-            move_slot(migrating[0], importing[0], slot, :dots => true, :fix => true)
-            # Case 2: There are multiple nodes that claim the slot as importing,
-            # they probably got keys about the slot after a restart so opened
-            # the slot. In this case we just move all the keys to the owner
-            # according to the configuration.
+            move_slot(migrating[0],importing[0],slot,:dots=>true,:fix=>true)
+        # Case 2: There are multiple nodes that claim the slot as importing,
+        # they probably got keys about the slot after a restart so opened
+        # the slot. In this case we just move all the keys to the owner
+        # according to the configuration.
         elsif migrating.length == 0 && importing.length > 0
             xputs ">>> Moving all the #{slot} slot keys to its owner #{owner}"
             importing.each {|node|
                 next if node == owner
-                move_slot(node, owner, slot, :dots => true, :fix => true, :cold => true)
+                move_slot(node,owner,slot,:dots=>true,:fix=>true,:cold=>true)
                 xputs ">>> Setting #{slot} as STABLE in #{node}"
-                node.r.cluster("setslot", slot, "stable")
+                node.r.cluster("setslot",slot,"stable")
             }
-            # Case 3: There are no slots claiming to be in importing state, but
-            # there is a migrating node that actually don't have any key. We
-            # can just close the slot, probably a reshard interrupted in the middle.
+        # Case 3: There are no slots claiming to be in importing state, but
+        # there is a migrating node that actually don't have any key. We
+        # can just close the slot, probably a reshard interrupted in the middle.
         elsif importing.length == 0 && migrating.length == 1 &&
-            migrating[0].r.cluster("getkeysinslot", slot, 10).length == 0
-            migrating[0].r.cluster("setslot", slot, "stable")
+              migrating[0].r.cluster("getkeysinslot",slot,10).length == 0
+            migrating[0].r.cluster("setslot",slot,"stable")
         else
             xputs "[ERR] Sorry, Redis-trib can't fix this slot yet (work in progress). Slot is set as migrating in #{migrating.join(",")}, as importing in #{importing.join(",")}, owner is #{owner}"
         end
@@ -681,8 +638,8 @@ class RedisTrib
     end
 
     def is_config_consistent?
-        signatures = []
-        @nodes.each {|n|
+        signatures=[]
+        @nodes.each{|n|
             signatures << n.get_config_signature
         }
         return signatures.uniq.length == 1
@@ -700,7 +657,7 @@ class RedisTrib
 
     def alloc_slots
         nodes_count = @nodes.length
-        masters_count = @nodes.length / (@replicas + 1)
+        masters_count = @nodes.length / (@replicas+1)
         masters = []
 
         # The first step is to split instances by IP. This is useful as
@@ -712,7 +669,7 @@ class RedisTrib
         # likely that the instance is running in a different physical host
         # or at least a different virtual machine.
         ips = {}
-        @nodes.each {|n|
+        @nodes.each{|n|
             ips[n.info[:host]] = [] if !ips[n.info[:host]]
             ips[n.info[:host]] << n
         }
@@ -724,7 +681,7 @@ class RedisTrib
         while not stop do
             # Take one node from each IP until we run out of nodes
             # across every IP.
-            ips.each do |ip, nodes|
+            ips.each do |ip,nodes|
                 if nodes.empty?
                     # if this IP has no remaining nodes, check for termination
                     if interleaved.length == nodes_count
@@ -742,7 +699,7 @@ class RedisTrib
         masters = interleaved.slice!(0, masters_count)
         nodes_count -= masters.length
 
-        masters.each {|m| puts m}
+        masters.each{|m| puts m}
 
         # Rotating the list sometimes helps to get better initial
         # anti-affinity before the optimizer runs.
@@ -753,14 +710,14 @@ class RedisTrib
         slots_per_node = ClusterHashSlots.to_f / masters_count
         first = 0
         cursor = 0.0
-        masters.each_with_index {|n, masternum|
-            last = (cursor + slots_per_node - 1).round
-            if last > ClusterHashSlots || masternum == masters.length - 1
-                last = ClusterHashSlots - 1
+        masters.each_with_index{|n,masternum|
+            last = (cursor+slots_per_node-1).round
+            if last > ClusterHashSlots || masternum == masters.length-1
+                last = ClusterHashSlots-1
             end
             last = first if last < first # Min step is 1.
             n.add_slots first..last
-            first = last + 1
+            first = last+1
             cursor += slots_per_node
         }
 
@@ -775,7 +732,7 @@ class RedisTrib
         # all nodes will be used.
         assignment_verbose = false
 
-        [:requested, :unused].each do |assign|
+        [:requested,:unused].each do |assign|
             masters.each do |m|
                 assigned_replicas = 0
                 while assigned_replicas < @replicas
@@ -792,7 +749,7 @@ class RedisTrib
                     end
 
                     # Return the first node not matching our current master
-                    node = interleaved.find {|n| n.info[:host] != m.info[:host]}
+                    node = interleaved.find{|n| n.info[:host] != m.info[:host]}
 
                     # If we found a node, use it as a best-first match.
                     # Otherwise, we didn't find a node on a different IP, so we
@@ -822,21 +779,21 @@ class RedisTrib
     end
 
     def optimize_anti_affinity
-        score, aux = get_anti_affinity_score
+        score,aux = get_anti_affinity_score
         return if score == 0
 
         xputs ">>> Trying to optimize slaves allocation for anti-affinity"
 
-        maxiter = 500 * @nodes.length # Effort is proportional to cluster size...
+        maxiter = 500*@nodes.length # Effort is proportional to cluster size...
         while maxiter > 0
-            score, offenders = get_anti_affinity_score
+            score,offenders = get_anti_affinity_score
             break if score == 0 # Optimal anti affinity reached
 
             # We'll try to randomly swap a slave's assigned master causing
             # an affinity problem with another random slave, to see if we
             # can improve the affinity.
             first = offenders.shuffle.first
-            nodes = @nodes.select {|n| n != first && n.info[:replicate]}
+            nodes = @nodes.select{|n| n != first && n.info[:replicate]}
             break if nodes.length == 0
             second = nodes.shuffle.first
 
@@ -845,7 +802,7 @@ class RedisTrib
             first.set_as_replica(second_master)
             second.set_as_replica(first_master)
 
-            new_score, aux = get_anti_affinity_score
+            new_score,aux = get_anti_affinity_score
             # If the change actually makes thing worse, revert. Otherwise
             # leave as it is becuase the best solution may need a few
             # combined swaps.
@@ -857,7 +814,7 @@ class RedisTrib
             maxiter -= 1
         end
 
-        score, aux = get_anti_affinity_score
+        score,aux = get_anti_affinity_score
         if score == 0
             xputs "[OK] Perfect anti-affinity obtained!"
         elsif score >= 10000
@@ -898,7 +855,7 @@ class RedisTrib
 
         # First, split nodes by host
         host_to_node = {}
-        @nodes.each {|n|
+        @nodes.each{|n|
             host = n.info[:host]
             host_to_node[host] = [] if host_to_node[host] == nil
             host_to_node[host] << n
@@ -907,9 +864,9 @@ class RedisTrib
         # Then, for each set of nodes in the same host, split by
         # related nodes (masters and slaves which are involved in
         # replication of each other)
-        host_to_node.each {|host, nodes|
+        host_to_node.each{|host,nodes|
             related = {}
-            nodes.each {|n|
+            nodes.each{|n|
                 if !n.info[:replicate]
                     name = n.info[:name]
                     related[name] = [] if related[name] == nil
@@ -923,48 +880,37 @@ class RedisTrib
 
             # Now it's trivial to check, for each related group having the
             # same host, what is their local score.
-            related.each {|id, types|
+            related.each{|id,types|
                 next if types.length < 2
                 types.sort! # Make sure :m if the first if any
                 if types[0] == :m
-                    score += 10000 * (types.length - 1)
+                    score += 10000 * (types.length-1)
                 else
                     score += 1 * types.length
                 end
 
                 # Populate the list of offending nodes
-                @nodes.each {|n|
+                @nodes.each{|n|
                     if n.info[:replicate] == id &&
-                        n.info[:host] == host
-                        offending << n
+                       n.info[:host] == host
+                       offending << n
                     end
                 }
             }
         }
-        return score, offending
+        return score,offending
     end
 
     def flush_nodes_config
-        @nodes.each {|n|
+        @nodes.each{|n|
             n.flush_node_config
         }
     end
 
     def show_nodes
-        @nodes.each {|n|
+        @nodes.each{|n|
             xputs n.info_string
         }
-    end
-
-    def show_node_detail(n)
-        if n.has_flag?("master")
-            puts "#{n} (#{n.info[:name]}) -> #{n.r.dbsize} keys | #{n.slots.length} slots | " +
-                     "#{n.info[:replicas].length} slaves."
-            n.info[:replicas].each {|repl|
-                puts "--- #{repl} (#{repl.info[:name]})"
-            }
-            puts ""
-        end
     end
 
     # Redis Cluster config epoch collision resolution code is able to eventually
@@ -974,9 +920,9 @@ class RedisTrib
     # since if we fail is not a problem.
     def assign_config_epoch
         config_epoch = 1
-        @nodes.each {|n|
+        @nodes.each{|n|
             begin
-                n.r.cluster("set-config-epoch", config_epoch)
+                n.r.cluster("set-config-epoch",config_epoch)
             rescue
             end
             config_epoch += 1
@@ -990,11 +936,9 @@ class RedisTrib
         # Thanks to gossip this information should propagate across all the
         # cluster in a matter of seconds.
         first = false
-        @nodes.each {|n|
-            if !first then
-                first = n.info; next;
-            end # Skip the first node
-            n.r.cluster("meet", first[:host], first[:port])
+        @nodes.each{|n|
+            if !first then first = n.info; next; end # Skip the first node
+            n.r.cluster("meet",first[:host],first[:port])
         }
     end
 
@@ -1013,10 +957,10 @@ class RedisTrib
         node.assert_cluster
         node.load_info(:getfriends => true)
         add_node(node)
-        node.friends.each {|f|
+        node.friends.each{|f|
             next if f[:flags].index("noaddr") ||
-                f[:flags].index("disconnected") ||
-                f[:flags].index("fail")
+                    f[:flags].index("disconnected") ||
+                    f[:flags].index("fail")
             fnode = ClusterNode.new(f[:addr])
             fnode.connect()
             next if !fnode.r
@@ -1034,13 +978,13 @@ class RedisTrib
     # add additional information to every node as a list of replicas.
     def populate_nodes_replicas_info
         # Start adding the new field to every node.
-        @nodes.each {|n|
+        @nodes.each{|n|
             n.info[:replicas] = []
         }
 
         # Populate the replicas field using the replicate field of slave
         # nodes.
-        @nodes.each {|n|
+        @nodes.each{|n|
             if n.info[:replicate]
                 master = get_node_by_name(n.info[:replicate])
                 if !master
@@ -1055,7 +999,7 @@ class RedisTrib
     # Given a list of source nodes return a "resharding plan"
     # with what slots to move in order to move "numslots" slots to another
     # instance.
-    def compute_reshard_table(sources, numslots)
+    def compute_reshard_table(sources,numslots)
         moved = []
         # Sort from bigger to smaller instance, for two reasons:
         # 1) If we take less slots than instances it is better to start
@@ -1064,20 +1008,20 @@ class RedisTrib
         #    perfect divisibility. Like we have 3 nodes and need to get 10
         #    slots, we take 4 from the first, and 3 from the rest. So the
         #    biggest is always the first.
-        sources = sources.sort {|a, b| b.slots.length <=> a.slots.length}
-        source_tot_slots = sources.inject(0) {|sum, source|
-            sum + source.slots.length
+        sources = sources.sort{|a,b| b.slots.length <=> a.slots.length}
+        source_tot_slots = sources.inject(0) {|sum,source|
+            sum+source.slots.length
         }
-        sources.each_with_index {|s, i|
+        sources.each_with_index{|s,i|
             # Every node will provide a number of slots proportional to the
             # slots it has assigned.
-            n = (numslots.to_f / source_tot_slots * s.slots.length)
+            n = (numslots.to_f/source_tot_slots*s.slots.length)
             if i == 0
                 n = n.ceil
             else
                 n = n.floor
             end
-            s.slots.keys.sort[(0...n)].each {|slot|
+            s.slots.keys.sort[(0...n)].each{|slot|
                 if moved.length < numslots
                     moved << {:source => s, :slot => slot}
                 end
@@ -1087,7 +1031,7 @@ class RedisTrib
     end
 
     def show_reshard_table(table)
-        table.each {|e|
+        table.each{|e|
             puts "    Moving slot #{e[:slot]} from #{e[:source].info[:name]}"
         }
     end
@@ -1100,7 +1044,7 @@ class RedisTrib
     # :cold    -- Move keys without opening slots / reconfiguring the nodes.
     # :update  -- Update nodes.info[:slots] for source/target nodes.
     # :quiet   -- Don't print info messages.
-    def move_slot(source, target, slot, o = {})
+    def move_slot(source,target,slot,o={})
         o = {:pipeline => MigrateDefaultPipeline}.merge(o)
 
         # We start marking the slot as importing in the destination node,
@@ -1113,37 +1057,35 @@ class RedisTrib
         end
 
         if !o[:cold]
-            target.r.cluster("setslot", slot, "importing", source.info[:name])
-            source.r.cluster("setslot", slot, "migrating", target.info[:name])
+            target.r.cluster("setslot",slot,"importing",source.info[:name])
+            source.r.cluster("setslot",slot,"migrating",target.info[:name])
         end
         # Migrate all the keys from source to target using the MIGRATE command
         while true
-            keys = source.r.cluster("getkeysinslot", slot, o[:pipeline])
+            keys = source.r.cluster("getkeysinslot",slot,o[:pipeline])
             break if keys.length == 0
             begin
-                # source.r.client.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :keys, *keys])
-                source.r.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :keys, *keys])
+                source.r.client.call(["migrate",target.info[:host],target.info[:port],"",0,@timeout,:keys,*keys])
             rescue => e
                 if o[:fix] && e.to_s =~ /BUSYKEY/
                     xputs "*** Target key exists. Replacing it for FIX."
-                    # source.r.client.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :replace, :keys, *keys])
-                    source.r.call(["migrate", target.info[:host], target.info[:port], "", 0, @timeout, :replace, :keys, *keys])
+                    source.r.client.call(["migrate",target.info[:host],target.info[:port],"",0,@timeout,:replace,:keys,*keys])
                 else
                     puts ""
                     xputs "[ERR] Calling MIGRATE: #{e}"
                     exit 1
                 end
             end
-            print "." * keys.length if o[:dots]
+            print "."*keys.length if o[:dots]
             STDOUT.flush
         end
 
         puts if !o[:quiet]
         # Set the new node as the owner of the slot in all the known nodes.
         if !o[:cold]
-            @nodes.each {|n|
+            @nodes.each{|n|
                 next if n.has_flag?("slave")
-                n.r.cluster("setslot", slot, "node", target.info[:name])
+                n.r.cluster("setslot",slot,"node",target.info[:name])
             }
         end
 
@@ -1156,22 +1098,17 @@ class RedisTrib
 
     # redis-trib subcommands implementations.
 
-    def check_cluster_cmd(argv, opt)
+    def check_cluster_cmd(argv,opt)
         load_cluster_info_from_node(argv[0])
-
-        if opt["health"]
-            print check_cluster_health
-        else
-            check_cluster
-        end
+        check_cluster
     end
 
-    def info_cluster_cmd(argv, opt)
+    def info_cluster_cmd(argv,opt)
         load_cluster_info_from_node(argv[0])
-        show_cluster_info(opt)
+        show_cluster_info
     end
 
-    def rebalance_cluster_cmd(argv, opt)
+    def rebalance_cluster_cmd(argv,opt)
         opt = {
             'pipeline' => MigrateDefaultPipeline,
             'threshold' => RebalanceDefaultThreshold
@@ -1185,7 +1122,7 @@ class RedisTrib
         threshold = opt['threshold'].to_i
         autoweights = opt['auto-weights']
         weights = {}
-        opt['weight'].each {|w|
+        opt['weight'].each{|w|
             fields = w.split("=")
             node = get_node_by_abbreviated_name(fields[0])
             if !node || !node.has_flag?("master")
@@ -1196,10 +1133,10 @@ class RedisTrib
         } if opt['weight']
         useempty = opt['use-empty-masters']
 
-        # Assign a weight to each node, and compute the total cluster weight.
+       # Assign a weight to each node, and compute the total cluster weight.
         total_weight = 0
         nodes_involved = 0
-        @nodes.each {|n|
+        @nodes.each{|n|
             if n.has_flag?("master")
                 next if !useempty && n.slots.length == 0
                 n.info[:w] = weights[n.info[:name]] ? weights[n.info[:name]] : 1
@@ -1220,11 +1157,11 @@ class RedisTrib
         # in order to be balanced.
         threshold = opt['threshold'].to_f
         threshold_reached = false
-        @nodes.each {|n|
+        @nodes.each{|n|
             if n.has_flag?("master")
                 next if !n.info[:w]
                 expected = ((ClusterHashSlots.to_f / total_weight) *
-                    n.info[:w]).to_i
+                            n.info[:w]).to_i
                 n.info[:balance] = n.slots.length - expected
                 # Compute the percentage of difference between the
                 # expected number of slots and the real one, to see
@@ -1232,7 +1169,7 @@ class RedisTrib
                 over_threshold = false
                 if threshold > 0
                     if n.slots.length > 0
-                        err_perc = (100 - (100.0 * expected / n.slots.length)).abs
+                        err_perc = (100-(100.0*expected/n.slots.length)).abs
                         over_threshold = true if err_perc > threshold
                     elsif expected > 0
                         over_threshold = true
@@ -1247,17 +1184,17 @@ class RedisTrib
         end
 
         # Only consider nodes we want to change
-        sn = @nodes.select {|n|
+        sn = @nodes.select{|n|
             n.has_flag?("master") && n.info[:w]
         }
 
         # Because of rounding, it is possible that the balance of all nodes
         # summed does not give 0. Make sure that nodes that have to provide
         # slots are always matched by nodes receiving slots.
-        total_balance = sn.map {|x| x.info[:balance]}.reduce {|a, b| a + b}
+        total_balance = sn.map{|x| x.info[:balance]}.reduce{|a,b| a+b}
         while total_balance > 0
-            sn.each {|n|
-                if n.info[:balance] <= 0 && total_balance > 0
+            sn.each{|n|
+                if n.info[:balance] < 0 && total_balance > 0
                     n.info[:balance] -= 1
                     total_balance -= 1
                 end
@@ -1265,14 +1202,14 @@ class RedisTrib
         end
 
         # Sort nodes by their slots balance.
-        sn = sn.sort {|a, b|
+        sn = sn.sort{|a,b|
             a.info[:balance] <=> b.info[:balance]
         }
 
         xputs ">>> Rebalancing across #{nodes_involved} nodes. Total weight = #{total_weight}"
 
         if $verbose
-            sn.each {|n|
+            sn.each{|n|
                 puts "#{n} balance is #{n.info[:balance]} slots"
             }
         end
@@ -1288,7 +1225,7 @@ class RedisTrib
         while dst_idx < src_idx
             dst = sn[dst_idx]
             src = sn[src_idx]
-            numslots = [dst.info[:balance], src.info[:balance]].map {|n|
+            numslots = [dst.info[:balance],src.info[:balance]].map{|n|
                 n.abs
             }.min
 
@@ -1296,20 +1233,20 @@ class RedisTrib
                 puts "Moving #{numslots} slots from #{src} to #{dst}"
 
                 # Actaully move the slots.
-                reshard_table = compute_reshard_table([src], numslots)
+                reshard_table = compute_reshard_table([src],numslots)
                 if reshard_table.length != numslots
                     xputs "*** Assertio failed: Reshard table != number of slots"
                     exit 1
                 end
                 if opt['simulate']
-                    print "#" * reshard_table.length
+                    print "#"*reshard_table.length
                 else
-                    reshard_table.each {|e|
-                        move_slot(e[:source], dst, e[:slot],
-                                  :quiet => true,
-                                  :dots => false,
-                                  :update => true,
-                                  :pipeline => opt['pipeline'])
+                    reshard_table.each{|e|
+                        move_slot(e[:source],dst,e[:slot],
+                            :quiet=>true,
+                            :dots=>false,
+                            :update=>true,
+                            :pipeline=>opt['pipeline'])
                         print "#"
                         STDOUT.flush
                     }
@@ -1325,7 +1262,7 @@ class RedisTrib
         end
     end
 
-    def fix_cluster_cmd(argv, opt)
+    def fix_cluster_cmd(argv,opt)
         @fix = true
         @timeout = opt['timeout'].to_i if opt['timeout']
 
@@ -1333,7 +1270,7 @@ class RedisTrib
         check_cluster
     end
 
-    def reshard_cluster_cmd(argv, opt)
+    def reshard_cluster_cmd(argv,opt)
         opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
 
         load_cluster_info_from_node(argv[0])
@@ -1378,7 +1315,7 @@ class RedisTrib
         # Get the source instances
         sources = []
         if opt['from']
-            opt['from'].split(',').each {|node_id|
+            opt['from'].split(',').each{|node_id|
                 if node_id == "all"
                     sources = "all"
                     break
@@ -1395,7 +1332,7 @@ class RedisTrib
             xputs "  Type 'all' to use all the nodes as source nodes for the hash slots."
             xputs "  Type 'done' once you entered all the source nodes IDs."
             while true
-                print "Source node ##{sources.length + 1}:"
+                print "Source node ##{sources.length+1}:"
                 line = STDIN.gets.chop
                 src = get_node_by_name(line)
                 if line == "done"
@@ -1421,7 +1358,7 @@ class RedisTrib
         # Handle soures == all.
         if sources == "all"
             sources = []
-            @nodes.each {|n|
+            @nodes.each{|n|
                 next if n.info[:name] == target.info[:name]
                 next if n.has_flag?("slave")
                 sources << n
@@ -1436,10 +1373,10 @@ class RedisTrib
 
         puts "\nReady to move #{numslots} slots."
         puts "  Source nodes:"
-        sources.each {|s| puts "    " + s.info_string}
+        sources.each{|s| puts "    "+s.info_string}
         puts "  Destination node:"
         puts "    #{target.info_string}"
-        reshard_table = compute_reshard_table(sources, numslots)
+        reshard_table = compute_reshard_table(sources,numslots)
         puts "  Resharding plan:"
         show_reshard_table(reshard_table)
         if !opt['yes']
@@ -1447,10 +1384,10 @@ class RedisTrib
             yesno = STDIN.gets.chop
             exit(1) if (yesno != "yes")
         end
-        reshard_table.each {|e|
-            move_slot(e[:source], target, e[:slot],
-                      :dots => true,
-                      :pipeline => opt['pipeline'])
+        reshard_table.each{|e|
+            move_slot(e[:source],target,e[:slot],
+                :dots=>true,
+                :pipeline=>opt['pipeline'])
         }
     end
 
@@ -1458,22 +1395,22 @@ class RedisTrib
     # the number of nodes and the specified replicas have a valid configuration
     # where there are at least three master nodes and enough replicas per node.
     def check_create_parameters
-        masters = @nodes.length / (@replicas + 1)
+        masters = @nodes.length/(@replicas+1)
         if masters < 3
             puts "*** ERROR: Invalid configuration for cluster creation."
             puts "*** Redis Cluster requires at least 3 master nodes."
             puts "*** This is not possible with #{@nodes.length} nodes and #{@replicas} replicas per node."
-            puts "*** At least #{3 * (@replicas + 1)} nodes are required."
+            puts "*** At least #{3*(@replicas+1)} nodes are required."
             exit 1
         end
     end
 
-    def create_cluster_cmd(argv, opt)
+    def create_cluster_cmd(argv,opt)
         opt = {'replicas' => 0}.merge(opt)
         @replicas = opt['replicas'].to_i
 
         xputs ">>> Creating cluster"
-        argv[0..-1].each {|n|
+        argv[0..-1].each{|n|
             node = ClusterNode.new(n)
             node.connect(:abort => true)
             node.assert_cluster
@@ -1506,7 +1443,7 @@ class RedisTrib
         check_cluster
     end
 
-    def addnode_cluster_cmd(argv, opt)
+    def addnode_cluster_cmd(argv,opt)
         xputs ">>> Adding node #{argv[0]} to cluster #{argv[1]}"
 
         # Check the existing cluster
@@ -1515,8 +1452,6 @@ class RedisTrib
 
         # If --master-id was specified, try to resolve it now so that we
         # abort before starting with the node configuration.
-
-        master = get_master_with_least_replicas
         if opt['slave']
             if opt['master-id']
                 master = get_node_by_name(opt['master-id'])
@@ -1524,7 +1459,7 @@ class RedisTrib
                     xputs "[ERR] No such master ID #{opt['master-id']}"
                 end
             else
-                # master = get_master_with_least_replicas
+                master = get_master_with_least_replicas
                 xputs "Automatically selected master #{master}"
             end
         end
@@ -1540,85 +1475,19 @@ class RedisTrib
 
         # Send CLUSTER MEET command to the new node
         xputs ">>> Send CLUSTER MEET to node #{new} to make it join the cluster."
-        new.r.cluster("meet", first[:host], first[:port])
+        new.r.cluster("meet",first[:host],first[:port])
 
         # Additional configuration is needed if the node is added as
         # a slave.
         if opt['slave']
             wait_cluster_join
             xputs ">>> Configure node as replica of #{master}."
-            new.r.cluster("replicate", master.info[:name])
+            new.r.cluster("replicate",master.info[:name])
         end
-
-
-        if opt['auto'] and not opt['slave']
-
-            wait_cluster_join
-
-            opt = {'pipeline' => MigrateDefaultPipeline}.merge(opt)
-
-            # master = get_master_with_least_replicas
-            if master.info[:replicas].length > 0
-
-                xputs ">>> Moving slots is a dangerious operation,please don't interrupt it."
-                xputs ">>> Performing automatically resharding slots to the new node"
-
-                masters = 0;
-                @nodes.each {|n|
-                    if n.has_flag?("master")
-                        masters += 1
-                    end
-                }
-                numslots = ClusterHashSlots / (masters)
-
-                # Set the target instance
-                target = new
-
-                # Set the source instances
-                sources = []
-                @nodes.each {|n|
-                    next if n.info[:name] == target.info[:name]
-                    next if n.has_flag?("slave")
-                    sources << n
-                }
-
-                # Check if the destination node is the same of any source nodes.
-                if sources.index(target)
-                    xputs "*** Target node is also listed among the source nodes!"
-                    exit 1
-                end
-
-                puts "\nReady to move #{numslots} slots."
-                puts "  Source nodes:"
-                sources.each {|s| puts "    " + s.info_string}
-                puts "  Destination node:"
-                puts "    #{target.info_string}"
-                reshard_table = compute_reshard_table(sources, numslots)
-                # puts "  Resharding plan:"
-                # show_reshard_table(reshard_table)
-                
-                # double lock ,make sure that the redis cluster is stable
-                wait_cluster_join
-                sleep 10
-
-                reshard_table.each {|e|
-                    move_slot(e[:source], target, e[:slot],
-                              :dots => true,
-                              :pipeline => opt['pipeline'],
-                              :quiet => true)
-                }
-
-                xputs "[OK] slots reshard finished correctly."
-            else
-                xputs ">>> Configure node as replica of #{master}."
-                new.r.cluster("replicate", master.info[:name])
-            end
-        end
-
         xputs "[OK] New node added correctly."
     end
 
-    def delnode_cluster_cmd(argv, opt)
+    def delnode_cluster_cmd(argv,opt)
         id = argv[1].downcase
         xputs ">>> Removing node #{id} from cluster #{argv[0]}"
 
@@ -1627,6 +1496,7 @@ class RedisTrib
 
         # Check if the node exists and is not empty
         node = get_node_by_name(id)
+
         if !node
             xputs "[ERR] No such node ID #{id}"
             exit 1
@@ -1639,15 +1509,15 @@ class RedisTrib
 
         # Send CLUSTER FORGET to all the nodes but the node to remove
         xputs ">>> Sending CLUSTER FORGET messages to the cluster..."
-        @nodes.each {|n|
+        @nodes.each{|n|
             next if n == node
             if n.info[:replicate] && n.info[:replicate].downcase == id
                 # Reconfigure the slave to replicate with some other node
                 master = get_master_with_least_replicas
                 xputs ">>> #{n} as replica of #{master}"
-                n.r.cluster("replicate", master.info[:name])
+                n.r.cluster("replicate",master.info[:name])
             end
-            n.r.cluster("forget", argv[1])
+            n.r.cluster("forget",argv[1])
         }
 
         # Finally shutdown the node
@@ -1655,7 +1525,7 @@ class RedisTrib
         node.r.shutdown
     end
 
-    def set_timeout_cluster_cmd(argv, opt)
+    def set_timeout_cluster_cmd(argv,opt)
         timeout = argv[1].to_i
         if timeout < 100
             puts "Setting a node timeout of less than 100 milliseconds is a bad idea."
@@ -1669,9 +1539,9 @@ class RedisTrib
 
         # Send CLUSTER FORGET to all the nodes but the node to remove
         xputs ">>> Reconfiguring node timeout in every cluster node..."
-        @nodes.each {|n|
+        @nodes.each{|n|
             begin
-                n.r.config("set", "cluster-node-timeout", timeout)
+                n.r.config("set","cluster-node-timeout",timeout)
                 n.r.config("rewrite")
                 ok_count += 1
                 xputs "*** New timeout set for #{n}"
@@ -1683,14 +1553,14 @@ class RedisTrib
         xputs ">>> New node timeout set. #{ok_count} OK, #{err_count} ERR."
     end
 
-    def call_cluster_cmd(argv, opt)
+    def call_cluster_cmd(argv,opt)
         cmd = argv[1..-1]
         cmd[0] = cmd[0].upcase
 
         # Load cluster information
         load_cluster_info_from_node(argv[0])
         xputs ">>> Calling #{cmd.join(" ")}"
-        @nodes.each {|n|
+        @nodes.each{|n|
             begin
                 res = n.r.send(*cmd)
                 puts "#{n}: #{res}"
@@ -1700,7 +1570,7 @@ class RedisTrib
         }
     end
 
-    def import_cluster_cmd(argv, opt)
+    def import_cluster_cmd(argv,opt)
         source_addr = opt['from']
         xputs ">>> Importing data from #{source_addr} to cluster #{argv[1]}"
         use_copy = opt['copy']
@@ -1712,8 +1582,8 @@ class RedisTrib
 
         # Connect to the source node.
         xputs ">>> Connecting to the source Redis instance"
-        src_host, src_port = source_addr.split(":")
-        source = Redis.new(:host => src_host, :port => src_port)
+        src_host,src_port = source_addr.split(":")
+        source = Redis.new(:host =>src_host, :port =>src_port)
         if source.info['cluster_enabled'].to_i == 1
             xputs "[ERR] The source node should not be a cluster node."
         end
@@ -1721,8 +1591,8 @@ class RedisTrib
 
         # Build a slot -> node map
         slots = {}
-        @nodes.each {|n|
-            n.slots.each {|s, _|
+        @nodes.each{|n|
+            n.slots.each{|s,_|
                 slots[s] = n
             }
         }
@@ -1731,16 +1601,16 @@ class RedisTrib
         # right node as needed.
         cursor = nil
         while cursor != 0
-            cursor, keys = source.scan(cursor, :count => 1000)
+            cursor,keys = source.scan(cursor, :count => 1000)
             cursor = cursor.to_i
-            keys.each {|k|
+            keys.each{|k|
                 # Migrate keys using the MIGRATE command.
                 slot = key_to_slot(k)
                 target = slots[slot]
                 print "Migrating #{k} to #{target}: "
                 STDOUT.flush
                 begin
-                    cmd = ["migrate", target.info[:host], target.info[:port], k, 0, @timeout]
+                    cmd = ["migrate",target.info[:host],target.info[:port],k,0,@timeout]
                     cmd << :copy if use_copy
                     cmd << :replace if use_replace
                     source.client.call(cmd)
@@ -1753,7 +1623,7 @@ class RedisTrib
         end
     end
 
-    def help_cluster_cmd(argv, opt)
+    def help_cluster_cmd(argv,opt)
         show_help
         exit 0
     end
@@ -1762,8 +1632,8 @@ class RedisTrib
     # Returns an hash populate with option => value pairs, and the index of
     # the first non-option argument in ARGV.
     def parse_options(cmd)
-        idx = 1; # Current index into ARGV
-        options = {}
+        idx = 1 ; # Current index into ARGV
+        options={}
         while idx < ARGV.length && ARGV[idx][0..1] == '--'
             if ARGV[idx][0..1] == "--"
                 option = ARGV[idx][2..-1]
@@ -1802,15 +1672,15 @@ class RedisTrib
 
         # Enforce mandatory options
         if ALLOWED_OPTIONS[cmd]
-            ALLOWED_OPTIONS[cmd].each {|option, val|
+            ALLOWED_OPTIONS[cmd].each {|option,val|
                 if !options[option] && val == :required
-                    puts "Option '--#{option}' is required " + \
+                    puts "Option '--#{option}' is required "+ \
                          "for subcommand '#{cmd}'"
                     exit 1
                 end
             }
         end
-        return options, idx
+        return options,idx
     end
 end
 
@@ -1839,46 +1709,46 @@ end
 module RedisClusterCRC16
     def RedisClusterCRC16.crc16(bytes)
         crc = 0
-        bytes.each_byte {|b|
-            crc = ((crc << 8) & 0xffff) ^ XMODEMCRC16Lookup[((crc >> 8) ^ b) & 0xff]
+        bytes.each_byte{|b|
+            crc = ((crc<<8) & 0xffff) ^ XMODEMCRC16Lookup[((crc>>8)^b) & 0xff]
         }
         crc
     end
 
-    private
+private
     XMODEMCRC16Lookup = [
-        0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
-        0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
-        0x1231, 0x0210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
-        0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c, 0xf3ff, 0xe3de,
-        0x2462, 0x3443, 0x0420, 0x1401, 0x64e6, 0x74c7, 0x44a4, 0x5485,
-        0xa56a, 0xb54b, 0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
-        0x3653, 0x2672, 0x1611, 0x0630, 0x76d7, 0x66f6, 0x5695, 0x46b4,
-        0xb75b, 0xa77a, 0x9719, 0x8738, 0xf7df, 0xe7fe, 0xd79d, 0xc7bc,
-        0x48c4, 0x58e5, 0x6886, 0x78a7, 0x0840, 0x1861, 0x2802, 0x3823,
-        0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969, 0xa90a, 0xb92b,
-        0x5af5, 0x4ad4, 0x7ab7, 0x6a96, 0x1a71, 0x0a50, 0x3a33, 0x2a12,
-        0xdbfd, 0xcbdc, 0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
-        0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03, 0x0c60, 0x1c41,
-        0xedae, 0xfd8f, 0xcdec, 0xddcd, 0xad2a, 0xbd0b, 0x8d68, 0x9d49,
-        0x7e97, 0x6eb6, 0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0x0e70,
-        0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a, 0x9f59, 0x8f78,
-        0x9188, 0x81a9, 0xb1ca, 0xa1eb, 0xd10c, 0xc12d, 0xf14e, 0xe16f,
-        0x1080, 0x00a1, 0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
-        0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c, 0xe37f, 0xf35e,
-        0x02b1, 0x1290, 0x22f3, 0x32d2, 0x4235, 0x5214, 0x6277, 0x7256,
-        0xb5ea, 0xa5cb, 0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
-        0x34e2, 0x24c3, 0x14a0, 0x0481, 0x7466, 0x6447, 0x5424, 0x4405,
-        0xa7db, 0xb7fa, 0x8799, 0x97b8, 0xe75f, 0xf77e, 0xc71d, 0xd73c,
-        0x26d3, 0x36f2, 0x0691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
-        0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9, 0xb98a, 0xa9ab,
-        0x5844, 0x4865, 0x7806, 0x6827, 0x18c0, 0x08e1, 0x3882, 0x28a3,
-        0xcb7d, 0xdb5c, 0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
-        0x4a75, 0x5a54, 0x6a37, 0x7a16, 0x0af1, 0x1ad0, 0x2ab3, 0x3a92,
-        0xfd2e, 0xed0f, 0xdd6c, 0xcd4d, 0xbdaa, 0xad8b, 0x9de8, 0x8dc9,
-        0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0x0cc1,
-        0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
-        0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
+        0x0000,0x1021,0x2042,0x3063,0x4084,0x50a5,0x60c6,0x70e7,
+        0x8108,0x9129,0xa14a,0xb16b,0xc18c,0xd1ad,0xe1ce,0xf1ef,
+        0x1231,0x0210,0x3273,0x2252,0x52b5,0x4294,0x72f7,0x62d6,
+        0x9339,0x8318,0xb37b,0xa35a,0xd3bd,0xc39c,0xf3ff,0xe3de,
+        0x2462,0x3443,0x0420,0x1401,0x64e6,0x74c7,0x44a4,0x5485,
+        0xa56a,0xb54b,0x8528,0x9509,0xe5ee,0xf5cf,0xc5ac,0xd58d,
+        0x3653,0x2672,0x1611,0x0630,0x76d7,0x66f6,0x5695,0x46b4,
+        0xb75b,0xa77a,0x9719,0x8738,0xf7df,0xe7fe,0xd79d,0xc7bc,
+        0x48c4,0x58e5,0x6886,0x78a7,0x0840,0x1861,0x2802,0x3823,
+        0xc9cc,0xd9ed,0xe98e,0xf9af,0x8948,0x9969,0xa90a,0xb92b,
+        0x5af5,0x4ad4,0x7ab7,0x6a96,0x1a71,0x0a50,0x3a33,0x2a12,
+        0xdbfd,0xcbdc,0xfbbf,0xeb9e,0x9b79,0x8b58,0xbb3b,0xab1a,
+        0x6ca6,0x7c87,0x4ce4,0x5cc5,0x2c22,0x3c03,0x0c60,0x1c41,
+        0xedae,0xfd8f,0xcdec,0xddcd,0xad2a,0xbd0b,0x8d68,0x9d49,
+        0x7e97,0x6eb6,0x5ed5,0x4ef4,0x3e13,0x2e32,0x1e51,0x0e70,
+        0xff9f,0xefbe,0xdfdd,0xcffc,0xbf1b,0xaf3a,0x9f59,0x8f78,
+        0x9188,0x81a9,0xb1ca,0xa1eb,0xd10c,0xc12d,0xf14e,0xe16f,
+        0x1080,0x00a1,0x30c2,0x20e3,0x5004,0x4025,0x7046,0x6067,
+        0x83b9,0x9398,0xa3fb,0xb3da,0xc33d,0xd31c,0xe37f,0xf35e,
+        0x02b1,0x1290,0x22f3,0x32d2,0x4235,0x5214,0x6277,0x7256,
+        0xb5ea,0xa5cb,0x95a8,0x8589,0xf56e,0xe54f,0xd52c,0xc50d,
+        0x34e2,0x24c3,0x14a0,0x0481,0x7466,0x6447,0x5424,0x4405,
+        0xa7db,0xb7fa,0x8799,0x97b8,0xe75f,0xf77e,0xc71d,0xd73c,
+        0x26d3,0x36f2,0x0691,0x16b0,0x6657,0x7676,0x4615,0x5634,
+        0xd94c,0xc96d,0xf90e,0xe92f,0x99c8,0x89e9,0xb98a,0xa9ab,
+        0x5844,0x4865,0x7806,0x6827,0x18c0,0x08e1,0x3882,0x28a3,
+        0xcb7d,0xdb5c,0xeb3f,0xfb1e,0x8bf9,0x9bd8,0xabbb,0xbb9a,
+        0x4a75,0x5a54,0x6a37,0x7a16,0x0af1,0x1ad0,0x2ab3,0x3a92,
+        0xfd2e,0xed0f,0xdd6c,0xcd4d,0xbdaa,0xad8b,0x9de8,0x8dc9,
+        0x7c26,0x6c07,0x5c64,0x4c45,0x3ca2,0x2c83,0x1ce0,0x0cc1,
+        0xef1f,0xff3e,0xcf5d,0xdf7c,0xaf9b,0xbfba,0x8fd9,0x9ff8,
+        0x6e17,0x7e36,0x4e55,0x5e74,0x2e93,0x3eb2,0x0ed1,0x1ef0
     ]
 end
 
@@ -1890,9 +1760,9 @@ def key_to_slot(key)
     # nothing in the middle, the whole key is hashed as usually.
     s = key.index "{"
     if s
-        e = key.index "}", s + 1
-        if e && e != s + 1
-            key = key[s + 1..e - 1]
+        e = key.index "}",s+1
+        if e && e != s+1
+            key = key[s+1..e-1]
         end
     end
     RedisClusterCRC16.crc16(key) % 16384
@@ -1902,26 +1772,24 @@ end
 # Definition of commands
 #################################################################################
 
-COMMANDS = {
-    "create" => ["create_cluster_cmd", -2, "host1:port1 ... hostN:portN"],
-    "check" => ["check_cluster_cmd", 2, "host:port"],
-    "info" => ["info_cluster_cmd", 2, "host:port"],
-    "fix" => ["fix_cluster_cmd", 2, "host:port"],
+COMMANDS={
+    "create"  => ["create_cluster_cmd", -2, "host1:port1 ... hostN:portN"],
+    "check"   => ["check_cluster_cmd", 2, "host:port"],
+    "info"    => ["info_cluster_cmd", 2, "host:port"],
+    "fix"     => ["fix_cluster_cmd", 2, "host:port"],
     "reshard" => ["reshard_cluster_cmd", 2, "host:port"],
     "rebalance" => ["rebalance_cluster_cmd", -2, "host:port"],
     "add-node" => ["addnode_cluster_cmd", 3, "new_host:new_port existing_host:existing_port"],
     "del-node" => ["delnode_cluster_cmd", 3, "host:port node_id"],
     "set-timeout" => ["set_timeout_cluster_cmd", 3, "host:port milliseconds"],
-    "call" => ["call_cluster_cmd", -3, "host:port command arg arg .. arg"],
-    "import" => ["import_cluster_cmd", 2, "host:port"],
-    "help" => ["help_cluster_cmd", 1, "(show this help)"]
+    "call" =>    ["call_cluster_cmd", -3, "host:port command arg arg .. arg"],
+    "import" =>  ["import_cluster_cmd", 2, "host:port"],
+    "help"    => ["help_cluster_cmd", 1, "(show this help)"]
 }
 
-ALLOWED_OPTIONS = {
+ALLOWED_OPTIONS={
     "create" => {"replicas" => true},
-    "info" => {"detail" => false},
-    "check" => {"health" => false},
-    "add-node" => {"slave" => false, "master-id" => true, "auto" => false},
+    "add-node" => {"slave" => false, "master-id" => true},
     "import" => {"from" => :required, "copy" => false, "replace" => false},
     "reshard" => {"from" => true, "to" => true, "slots" => true, "yes" => false, "timeout" => true, "pipeline" => true},
     "rebalance" => {"weight" => [], "auto-weights" => false, "use-empty-masters" => false, "timeout" => true, "simulate" => false, "pipeline" => true, "threshold" => true},
@@ -1929,19 +1797,17 @@ ALLOWED_OPTIONS = {
 }
 
 def show_help
-    puts "This Redis Tool has been modified by caiqy. Redis Version: 4.0.7 "
     puts "Usage: redis-trib <command> <options> <arguments ...>\n\n"
-    COMMANDS.each {|k, v|
+    COMMANDS.each{|k,v|
         puts "  #{k.ljust(15)} #{v[2]}"
         if ALLOWED_OPTIONS[k]
-            ALLOWED_OPTIONS[k].each {|optname, has_arg|
+            ALLOWED_OPTIONS[k].each{|optname,has_arg|
                 puts "                  --#{optname}" + (has_arg ? " <arg>" : "")
             }
         end
     }
     puts "\nFor check, fix, reshard, del-node, set-timeout you can specify the host and port of any working node in the cluster.\n"
 end
-
 
 # Sanity check
 if ARGV.length == 0
@@ -1957,8 +1823,8 @@ if !cmd_spec
 end
 
 # Parse options
-cmd_options, first_non_option = rt.parse_options(ARGV[0].downcase)
-rt.check_arity(cmd_spec[1], ARGV.length - (first_non_option - 1))
+cmd_options,first_non_option = rt.parse_options(ARGV[0].downcase)
+rt.check_arity(cmd_spec[1],ARGV.length-(first_non_option-1))
 
 # Dispatch
-rt.send(cmd_spec[0], ARGV[first_non_option..-1], cmd_options)
+rt.send(cmd_spec[0],ARGV[first_non_option..-1],cmd_options)
