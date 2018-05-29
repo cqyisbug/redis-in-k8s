@@ -39,6 +39,7 @@ pip install jinja2
   "persistent_flag": false,                是否开启持久化
   "redis_data_size": 2,                    持久化存储卷的大小，单位Gi
   "log_level":0,                           0:debug 1:info 2:warn 3:error
+  "hostnetwork":false,                     是否使用宿主机网络,也表示pod的ip和宿主机一样,这样就限制了,每个node上只能跑一个redis 的 pod,如果有在kubernetes外访问集群的需求,推荐使用这个选项,也可以自己做网络,自己做网络代价比价大
   "pre_master_replicas":0                  这个参数和redis_replicas有关，表示redis集群中每个主节点的从节点数量，和redis_replicas 满足关系式  redis_replicas >= (pre_master_replicas + 1)*3
 }
 
@@ -74,10 +75,7 @@ python redis.py scale [new_replicas] (集群扩容)
 -----
 ### 文件夹说明
 
-docker 文件夹中包含了一个Dockerfile，你可以使用一下命令来创建镜像。
-```
-docker build -t $YOUR_TAG . && docker push $YOUR_TAG
-```
+docker 文件夹中包含了一个Dockerfile,用来制作docker镜像
 
 k8s_installer 是github上的kubeasz项目,个人感觉写的很好,推荐一下.
 
@@ -86,7 +84,7 @@ redis_cluster_installer 是一个在CentOS 7 下搭建redis集群的脚本.
 
 -----
 
-### 目前我所遇到的问题
+### 目前我所遇到的问题,见unstable版本
 
 - 当statefulset的pod所在的node节点挂了之后,pod无法完成调度,pod的状态变为unknow,此时集群一般情况下能正常使用,但是扩容和卸载操作均会受到影响
 - redis的集群扩容,有过redis运维经验的人一般都知道,redis的作者提供了一个redis-trib的工具,这个工具中的添加节点和迁移slot是两个分开的命令,至于为什么要分开,个人测试了下发现添加完节点之后,就算此时你检测到集群的状态是正常的,立马迁移slot也会出问题,需要等一段时间之后才能进行迁移slot操作

@@ -278,7 +278,6 @@ def check_redis(return_code=False):
             else:
                 return True
         else:
-            # print("[redis] - " + dic.get("message"))
             if return_code:
                 return dic.get("code")
             else:
