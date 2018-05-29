@@ -4,7 +4,7 @@ FROM alpine:3.6
 # author caiqyxyx
 # date 2017 12 17
 
-RUN apk add --no-cache 'su-exec>=0.2' sed bash ruby
+RUN apk add --no-cache 'su-exec>=0.2' sed bash 
 
 ENV REDIS_VERSION 4.0.8
 ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz
@@ -52,12 +52,7 @@ RUN set -ex; \
     apk del .build-deps ; \
 	apk add --no-cache curl jq 
 
-#  安装ruby环境  由于ruby的原因安装gem install redis的时候会稍微报点错,但是这个错误在docker里面会被捕捉到,所以放到shell 脚本里面去了
-#  RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/
-#  RUN gem install redis -V
-#  RUN export PATH="$PATH:/usr/src/redis/src/"
 
-RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/;
 
 EXPOSE 6379
 EXPOSE 6380
@@ -68,15 +63,9 @@ COPY redis-slave.conf /config/redis/slave.conf
 COPY redis-cluster.conf /config/redis/cluster.conf
 RUN touch /config/redis/sentinel.conf
 COPY entrypoint.sh /code/redis/entrypoint.sh
-COPY redis-4.0.1.gem /redis-401.gem
-COPY rdoc-6.0.0.gem /rdoc-600.gem
-COPY redis-trib.rb /code/redis/redis-trib.rb
 
 
-RUN chmod +x /code/redis/entrypoint.sh ;\
-	chmod +x /code/redis/redis-trib.rb ;\
-	cp /code/redis/redis-trib.rb /usr/bin/redis-trib.rb ;\
-	chmod +x /usr/bin/redis-trib.rb
+RUN chmod +x /code/redis/entrypoint.sh ;
 
 CMD [ "/code/redis/entrypoint.sh" ]
 ENTRYPOINT [ "bash", "-c" ]
