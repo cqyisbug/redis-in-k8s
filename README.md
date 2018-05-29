@@ -18,9 +18,9 @@
 
 >假设你已安装k8s和docker,{} 表示变量,需要你自己填
 
-- 1. 进入docker文件夹下
+- 1. 进入docker文件夹下,点不要忘记
 ```
-docker build -t {yourtag} . && docker push {yourtag} 
+docker build -t {yourtag} .  
 ```
 
 - 2. 使用pip安装python依赖
