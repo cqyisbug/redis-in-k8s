@@ -22,7 +22,8 @@ CLUSTER_REPLICAS = os.getenv("cluster_replicas".upper())
 STATEFULSET_REPLICAS = os.getenv("statefulset_replicas".upper())
 API_SERVER_ADDR = os.getenv("api_server_addr".upper())
 WAIT_TIMEOUT = os.getenv("wait_timeout".upper())
-TOLERANCE=os.getenv("tolerance".upper())
+REBALANCE_DELAY = os.getenv("rebalance_delay".upper())
+TOLERANCE = os.getenv("tolerance".upper())
 LOG_LEVEL = os.getenv("log_level".upper())
 if not str(LOG_LEVEL):
     LOG_LEVEL = 0
@@ -122,7 +123,7 @@ def check_redis_cluster():
         return 3
     elif result.index("covered by nodes") > 0:
         return 4
-    elif result.index("you need to pass either") > 0:
+    elif result.index("Invalid arguments") > 0:
         return 5
     else:
         return 6
@@ -198,7 +199,6 @@ def available(o, k):
         return {}
 
 
-
 def set_timeout(num, callback):
     def wrap(func):
         def handle(signum, frame):
@@ -214,19 +214,21 @@ def set_timeout(num, callback):
                 signal.alarm(0)
                 return r
             except RuntimeError:
-                callback()
+                return callback()
         return to_do
     return wrap
+
 
 def wait_timeout_handler():
     print("Wait time out ,please check status of  kubernetes or check redis config files.")
     return False
 
-@set_timeout(WAIT_TIMEOUT,wait_timeout_handler)
-def wait_cluste_be_ready():
+
+@set_timeout(WAIT_TIMEOUT, wait_timeout_handler)
+def wait_cluster_be_ready():
     ready_pods = get_redis_cluster_ready_pods(return_int=True)
     if (ready_pods + TOLERANCE) >= STATEFULSET_REPLICAS:
-        return true:
+        return True
     else:
         time.sleep(2)
 
@@ -248,25 +250,30 @@ def cluster_launcher():
             exit(1)
 
 
-
 def ctrl_launcher():
-    if cluster_exists():
-        ready_pods = get_redis_cluster_ready_pods()
-        redis_cluster_nodes = get_redis_cluster_nodes()
-        if ready_pods > redis_cluster_nodes:
-            pass
-        elif ready_pods == redis_cluster_nodes:
-            check_redis_cluster()
-        else:
-            warn("[WARN] Redis Cluster lost some nodes!")
-    else:
+    if not cluster_exists():
         info("Loading cluster statefulset's info...")
         while not cluster_statefulset_exists():
             time.sleep(5)
             print("tick tock........")
-        if wait_cluste_be_ready():
-            create_redis_cluster(pods)
+        if wait_cluster_be_ready():
+            create_redis_cluster(
+                get_redis_cluster_ready_pods(return_int=False))
         else:
+            exit(1)
+    old_ready_pods = {}
+    diff_ready_pods = {}
+    old_redis_cluster_nodes = 0
+    while True:
+        ready_pods = get_redis_cluster_ready_pods(return_int=False)
+        redis_cluster_nodes = get_redis_cluster_nodes()
+        if ready_pods > redis_cluster_nodes:
+            if wait_cluster_be_ready():
+                pass
+        elif ready_pods == redis_cluster_nodes:
+            check_redis_cluster()
+        else:
+            warn("[WARN] Redis Cluster lost some nodes!")
             exit(1)
 
 
@@ -283,4 +290,4 @@ if __name__ == "__main__":
         single_launcher()
     else:
         error(
-            "Environment of Redis Mode error! Mode must be \"ClusterNode\",\"ClusterCtrl\" ")
+            "Environment of Redis Mode error! Mode must be \"ClusterNode\",\"ClusterCtrl\",\"SingleNode\" ")
