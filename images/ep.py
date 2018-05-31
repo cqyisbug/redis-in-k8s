@@ -1,4 +1,4 @@
-#env /usr/bin/python
+# env /usr/bin/python
 # -*- coding:UTF-8 -*-
 
 import os
@@ -25,6 +25,7 @@ WAIT_TIMEOUT = os.getenv("wait_timeout".upper())
 REBALANCE_DELAY = os.getenv("rebalance_delay".upper())
 TOLERANCE = os.getenv("tolerance".upper())
 LOG_LEVEL = os.getenv("log_level".upper())
+REDIS_PORT = os.getenv("redis_port".upper())
 if not str(LOG_LEVEL):
     LOG_LEVEL = 0
 
@@ -132,9 +133,19 @@ def check_redis_cluster():
 def create_redis_cluster(pods):
     hosts = ""
     for k, v in pods:
+        os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}",statefulset=CLUSTER_STATEFULSET_NAME,service=CLUSTER_SERVICE_NAME,nodeid=get_node_id_by_ip(v["ip"]))
         hosts += v["ip"]+":$REDIS_PORT "
     os.system("redis-cli --cluster create --cluster-replicas $CLUSTER_REPLICAS")
 
+
+def get_node_id_by_ip(ip):
+    try:
+        cmd = "redis-cli -h {ip} -p $REDIS_PORT  cluster nodes | grep myself |awk '{print $1}".format(
+            statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME)
+        run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        return run.stdout.read().replace('\n', '')
+    except Exception:
+        return ""
 
 def is_new_pod():
     return os.path.exists(EXIST_FLAG_FILE)
@@ -234,8 +245,10 @@ def wait_cluster_be_ready():
 
 
 def cluster_launcher():
+    info = get_cluster_endpoint_info()
     if is_new_pod():
-        result = os.system("redis-server /home/redis/data/redis.conf")
+        result = os.system("redis-server /home/redis/data/redis.conf && redis-cli -p $REDIS_PORT cluster meet {ip} {port}", ip=get_ip_by_podname(
+            info, CLUSTER_STATEFULSET_NAME+"-0"), port=REDIS_PORT)
         if result == 0:
             write_file("1", EXIST_FLAG_FILE)
         else:
@@ -244,7 +257,8 @@ def cluster_launcher():
     else:
         info = get_cluster_endpoint_info()
         fix_cluster_config_file(info)
-        result = os.system("redis-server /home/redis/data/redis.conf")
+        result = os.system("redis-server /home/redis/data/redis.conf && redis-cli -p $REDIS_PORT cluster meet {ip} {port}", ip=get_ip_by_podname(
+            info, CLUSTER_STATEFULSET_NAME+"-0"), port=REDIS_PORT)
         if not result == 0:
             error("Something wrong happened!please check your redis config file.")
             exit(1)
