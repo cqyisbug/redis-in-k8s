@@ -7,16 +7,25 @@ import urllib
 import urllib2
 import json
 import subprocess
+import io
+import signal
 
-LOG_LEVEL = os.getenv("log_level".upper())
-if not str(LOG_LEVEL):
-    LOG_LEVEL = 0
 
-EXIST_FLAG_FILE = "/home/redis/data/existflag"
+DATA_DIC = "home/redis/data/"
+EXIST_FLAG_FILE = "{data_dic}existflag".format(data_dic=DATA_DIC)
+NODES_CONFIG_FILE = "{data_dic}nodes.conf".format(data_dic=DATA_DIC)
+IP_PODNAME_RELATION_JSON = "{data_dic}relation.json".format(data_dic=DATA_DIC)
 CLUSTER_STATEFULSET_NAME = "sts-redis-cluster"
 CLUSTER_SERVICE_NAME = "svc-redis-cluster"
 CLUSTER_NAMESPACE = "default"
+CLUSTER_REPLICAS = os.getenv("cluster_replicas".upper())
+STATEFULSET_REPLICAS = os.getenv("statefulset_replicas".upper())
 API_SERVER_ADDR = os.getenv("api_server_addr".upper())
+WAIT_TIMEOUT = os.getenv("wait_timeout".upper())
+TOLERANCE=os.getenv("tolerance".upper())
+LOG_LEVEL = os.getenv("log_level".upper())
+if not str(LOG_LEVEL):
+    LOG_LEVEL = 0
 
 
 def info(out):
@@ -64,7 +73,7 @@ def cluster_exists():
 
 def get_redis_cluster_nodes(return_int=True):
     try:
-        cmd = "redis-cli -h {statefulset}-0.{service} -p ${REDIS_PORT}  cluster nodes | wc -l".format(
+        cmd = "redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT  cluster nodes | wc -l".format(
             statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME)
         run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         quantum = int(run.stdout.read().replace('\n', ''))
@@ -98,12 +107,32 @@ def cluster_statefulset_exists():
         return False
 
 
-def check_redis_cluster(verbose=True):
-    pass
+def check_redis_cluster():
+    cmd = "redis-cli --cluster check {statefulset}-0.{service}:$REDIS_PORT".format(
+        statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME)
+    run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+    result = run.stdout.read()
+    if result.index("[ERR") <= 0 and result.index("[WARN") <= 0:
+        return 0
+    elif result.index("Nodes don't agree about configuration") > 0:
+        return 1
+    elif result.index("in migrating state") > 0:
+        return 2
+    elif result.index("in importing state") > 0:
+        return 3
+    elif result.index("covered by nodes") > 0:
+        return 4
+    elif result.index("you need to pass either") > 0:
+        return 5
+    else:
+        return 6
 
 
 def create_redis_cluster(pods):
-    pass
+    hosts = ""
+    for k, v in pods:
+        hosts += v["ip"]+":$REDIS_PORT "
+    os.system("redis-cli --cluster create --cluster-replicas $CLUSTER_REPLICAS")
 
 
 def is_new_pod():
@@ -127,13 +156,39 @@ def write_file(content, output_file):
 def get_cluster_endpoint_info():
     res = api("/api/v1/namespaces/{namespace}/endpoints/{name}".format(
         namespace=CLUSTER_NAMESPACE, name=CLUSTER_SERVICE_NAME))
-    ok = available(res,"addresses")
-    bad = available(res,"notReadyAddresses")
-    return {"ok":ok,"bad":bad}
+    ok = available(res, "addresses")
+    bad = available(res, "notReadyAddresses")
+    return {"ok": ok, "bad": bad}
 
 
 def fix_cluster_config_file(info):
-    pass
+    with io.open(NODES_CONFIG_FILE, 'r', encoding='utf-8') as config_stream:
+        content = config_stream.read()
+        endpoint_info = get_cluster_endpoint_info()
+        with io.open(IP_PODNAME_RELATION_JSON, 'r', encoding='utf-8') as json_stream:
+            old_endpoint_info = json.load(json_stream)
+            for k, v in available(old_endpoint_info, 'ok'):
+                content = content.replace(v["ip"], get_ip_by_podname(
+                    endpoint_info, v["targetRef"]["name"]))
+            for k, v in available(old_endpoint_info, 'bad'):
+                content = content.replace(v["ip"], get_ip_by_podname(
+                    endpoint_info, v["targetRef"]["name"]))
+            write_file(content, NODES_CONFIG_FILE)
+
+
+def get_ip_by_podname(obj, name):
+    for k, v in available(obj, 'ok'):
+        if v["targetRef"]["name"] == name:
+            return v["ip"]
+    for k, v in available(obj, 'bad'):
+        if v["targetRef"]["name"] == name:
+            return v["ip"]
+    return False
+
+
+def save_ip_podname_relation():
+    write_file(json.dumps(get_cluster_endpoint_info()),
+               IP_PODNAME_RELATION_JSON)
 
 
 def available(o, k):
@@ -141,6 +196,39 @@ def available(o, k):
         return o[k]
     else:
         return {}
+
+
+
+def set_timeout(num, callback):
+    def wrap(func):
+        def handle(signum, frame):
+            raise RuntimeError
+
+        def to_do(*args, **kwargs):
+            try:
+                signal.signal(signal.SIGALRM, handle)
+                signal.alarm(num)
+                # print('start alarm signal.')
+                r = func(*args, **kwargs)
+                # print('close alarm signal.')
+                signal.alarm(0)
+                return r
+            except RuntimeError:
+                callback()
+        return to_do
+    return wrap
+
+def wait_timeout_handler():
+    print("Wait time out ,please check status of  kubernetes or check redis config files.")
+    return False
+
+@set_timeout(WAIT_TIMEOUT,wait_timeout_handler)
+def wait_cluste_be_ready():
+    ready_pods = get_redis_cluster_ready_pods(return_int=True)
+    if (ready_pods + TOLERANCE) >= STATEFULSET_REPLICAS:
+        return true:
+    else:
+        time.sleep(2)
 
 
 def cluster_launcher():
@@ -160,6 +248,7 @@ def cluster_launcher():
             exit(1)
 
 
+
 def ctrl_launcher():
     if cluster_exists():
         ready_pods = get_redis_cluster_ready_pods()
@@ -175,8 +264,10 @@ def ctrl_launcher():
         while not cluster_statefulset_exists():
             time.sleep(5)
             print("tick tock........")
-        pods = get_redis_cluster_ready_pods(return_int=False)
-        create_redis_cluster(pods)
+        if wait_cluste_be_ready():
+            create_redis_cluster(pods)
+        else:
+            exit(1)
 
 
 def single_launcher():
