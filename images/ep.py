@@ -275,21 +275,21 @@ def ctrl_launcher():
                 get_redis_cluster_ready_pods(return_int=False))
         else:
             exit(1)
-    old_ready_pods = {}
-    diff_ready_pods = {}
     old_redis_cluster_nodes = 0
     while True:
-        ready_pods = get_redis_cluster_ready_pods(return_int=False)
         redis_cluster_nodes = get_redis_cluster_nodes()
-        if ready_pods > redis_cluster_nodes:
-            if wait_cluster_be_ready():
-                pass
-        elif ready_pods == redis_cluster_nodes:
+        if old_redis_cluster_nodes == 0 :
+            time.sleep(5)
+            old_redis_cluster_nodes = redis_cluster_nodes
+        elif old_redis_cluster_nodes < redis_cluster_nodes:
+            print("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
+            time.sleep(REBALANCE_DELAY)
+            os.system("redis-cluster --cluster --rebalance {statefulset}-0.{service} ".format(statefulset = CLUSTER_STATEFULSET_NAME,service=CLUSTER_SERVICE_NAME))
+        elif old_redis_cluster_nodes == redis_cluster_nodes:
             check_redis_cluster()
+            time.sleep(10)
         else:
-            warn("[WARN] Redis Cluster lost some nodes!")
-            exit(1)
-
+            print("Something error happened!")
 
 def single_launcher():
     pass
