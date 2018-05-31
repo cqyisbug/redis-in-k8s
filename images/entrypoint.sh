@@ -1,10 +1,5 @@
 #!/bin/bash
 
-:<<comment
- Redis Cluster Mode
-
-comment
-
 # define log level, 0:debug 1:info 2:warn 3:error
 
 if test ! $LOG_LEVEL ; then
@@ -235,3 +230,10 @@ if [[ $CLUSTER_CTRL == "true" ]] ; then
     cluster_ctrl_launcher
     exit 0
 fi
+
+echo "hello wolrd "
+
+while true;do
+ echo "sleeping"
+ sleep 5
+done

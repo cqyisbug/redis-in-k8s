@@ -1,14 +1,13 @@
 FROM alpine:3.6
 
-# redis docker images
-# author caiqyxyx
-# date 2017 12 17
+MAINTAINER caiqy cqyisbug@163.com
+
+#******************** -Redis-  *********************
 
 RUN apk add --no-cache 'su-exec>=0.2' sed bash 
 
 ENV REDIS_VERSION 4.0.8
 ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz
-# ENV REDIS_DOWNLOAD_SHA 2049cd6ae9167f258705081a6ef23bb80b7eff9ff3d0d7481e89510f27457591
 ENV TIME_ZONE Asiz/Shanghai
 
 # 下载redis 并且编译
@@ -27,7 +26,7 @@ RUN set -ex; \
 		jq \
 	; \
 	\
-	# 设置时区
+	# use host's /etc/localtime
     cp -r -f /usr/share/zoneinfo/Hongkong /etc/localtime ; \
     echo -ne "Alpine Linux 3.6 image. (`uname -rsv`)\n" >> /root/.built ;\
 	wget -O redis.tar.gz "$REDIS_DOWNLOAD_URL"; \
@@ -43,29 +42,131 @@ RUN set -ex; \
 	make -C /usr/src/redis -j "$(nproc)"; \
 	make -C /usr/src/redis install; \
 	\
-	mkdir -p /code/redis ;\
-	\
-#	mv /usr/src/redis/src/redis-trib.rb /code/redis/redis-trib.rb ;\
+	mkdir -p /home/redis ;\
 	\
 	rm -r /usr/src/redis; \
 	\
     apk del .build-deps ; \
 	apk add --no-cache curl jq 
 
-
-
 EXPOSE 6379
 EXPOSE 6380
 EXPOSE 26379
 
-COPY redis-master.conf /config/redis/master.conf
-COPY redis-slave.conf /config/redis/slave.conf
-COPY redis-cluster.conf /config/redis/cluster.conf
-RUN touch /config/redis/sentinel.conf
-COPY entrypoint.sh /code/redis/entrypoint.sh
+
+#******************** -Python-  *********************
+
+# ensure local python is preferred over distribution python
+ENV PATH /usr/local/bin:$PATH
+
+# http://bugs.python.org/issue19846
+# > At the moment, setting "LANG=C" on a Linux system *fundamentally breaks Python 3*, and that's not OK.
+ENV LANG C.UTF-8
 
 
-RUN chmod +x /code/redis/entrypoint.sh ;
+# install ca-certificates so that HTTPS works consistently
+# the other runtime dependencies for Python are installed later
+RUN apk add --no-cache ca-certificates
 
-CMD [ "/code/redis/entrypoint.sh" ]
-ENTRYPOINT [ "bash", "-c" ]
+ENV GPG_KEY C01E1CAD5EA2C4F0B8E3571504C367C218ADD4FF
+ENV PYTHON_VERSION 2.7.13
+
+RUN set -ex \
+	&& apk add --no-cache --virtual .fetch-deps \
+		gnupg \
+		libressl \
+		tar \
+		xz \
+	\
+	&& wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz" \
+	&& wget -O python.tar.xz.asc "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc" \
+	&& export GNUPGHOME="$(mktemp -d)" \
+	&& gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$GPG_KEY" \
+	&& gpg --batch --verify python.tar.xz.asc python.tar.xz \
+	&& rm -rf "$GNUPGHOME" python.tar.xz.asc \
+	&& mkdir -p /usr/src/python \
+	&& tar -xJC /usr/src/python --strip-components=1 -f python.tar.xz \
+	&& rm python.tar.xz \
+	\
+	&& apk add --no-cache --virtual .build-deps  \
+		bzip2-dev \
+		coreutils \
+		dpkg-dev dpkg \
+		gcc \
+		gdbm-dev \
+		libc-dev \
+		linux-headers \
+		make \
+		ncurses-dev \
+		libressl \
+		libressl-dev \
+		pax-utils \
+		readline-dev \
+		sqlite-dev \
+		tcl-dev \
+		tk \
+		tk-dev \
+		zlib-dev \
+# add build deps before removing fetch deps in case there's overlap
+	&& apk del .fetch-deps \
+	\
+	&& cd /usr/src/python \
+	&& gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
+	&& ./configure \
+		--build="$gnuArch" \
+		--enable-shared \
+		--enable-unicode=ucs4 \
+	&& make -j "$(nproc)" \
+	&& make install \
+	\
+	&& runDeps="$( \
+		scanelf --needed --nobanner --recursive /usr/local \
+			| awk '{ gsub(/,/, "\nso:", $2); print "so:" $2 }' \
+			| sort -u \
+			| xargs -r apk info --installed \
+			| sort -u \
+	)" \
+	&& apk add --virtual .python-rundeps $runDeps \
+	&& apk del .build-deps \
+	\
+	&& find /usr/local -depth \
+		\( \
+			\( -type d -a \( -name test -o -name tests \) \) \
+			-o \
+			\( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
+		\) -exec rm -rf '{}' + \
+	&& rm -rf /usr/src/python
+
+# if this is called "PIP_VERSION", pip explodes with "ValueError: invalid truth value '<VERSION>'"
+ENV PYTHON_PIP_VERSION 9.0.1
+
+RUN set -ex; \
+	\
+	apk add --no-cache --virtual .fetch-deps libressl; \
+	\
+	wget -O get-pip.py 'https://bootstrap.pypa.io/get-pip.py'; \
+	\
+	apk del .fetch-deps; \
+	\
+	python get-pip.py \
+		--disable-pip-version-check \
+		--no-cache-dir \
+		"pip==$PYTHON_PIP_VERSION" \
+	; \
+	pip --version; \
+	\
+	find /usr/local -depth \
+		\( \
+			\( -type d -a \( -name test -o -name tests \) \) \
+			-o \
+			\( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
+		\) -exec rm -rf '{}' +; \
+	rm -f get-pip.py
+
+
+COPY entrypoint.sh /home/redis/entrypoint.sh
+RUN chmod +X /home/redis/entrypoint.sh
+COPY ep.py /ep.py
+# CMD [ "/home/redis/entrypoint.sh" ]
+CMD [ "/ep.py" ]
+ENTRYPOINT [ "python" ]
