@@ -10,7 +10,6 @@ import subprocess
 import io
 import signal
 
-
 DATA_DIC = "home/redis/data/"
 EXIST_FLAG_FILE = "{data_dic}existflag".format(data_dic=DATA_DIC)
 NODES_CONFIG_FILE = "{data_dic}nodes.conf".format(data_dic=DATA_DIC)
@@ -26,6 +25,7 @@ REBALANCE_DELAY = os.getenv("rebalance_delay".upper())
 TOLERANCE = os.getenv("tolerance".upper())
 LOG_LEVEL = os.getenv("log_level".upper())
 REDIS_PORT = os.getenv("redis_port".upper())
+MY_POD_IP = os.getenv("my_pod_ip".upper())
 if not str(LOG_LEVEL):
     LOG_LEVEL = 0
 
@@ -33,19 +33,19 @@ if not str(LOG_LEVEL):
 def info(out):
     if str(LOG_LEVEL).upper() == "INFO" or str(LOG_LEVEL) == "0":
         print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-              "  \033[34m"+str(out)+"\033[0m")
+              "  \033[34m" + str(out) + "\033[0m")
 
 
 def warn(out):
     if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1":
         print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-              "  \033[33m"+str(out)+"\033[0m")
+              "  \033[33m" + str(out) + "\033[0m")
 
 
 def error(out):
     if str(LOG_LEVEL).upper() == "ERROR" or str(LOG_LEVEL) == "2":
         print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-              "  \033[31m"+str(out)+"\033[0m")
+              "  \033[31m" + str(out) + "\033[0m")
 
 
 def http_get(url):
@@ -60,7 +60,7 @@ def http_get(url):
 
 def api(suffix):
     try:
-        res = json.loads(http_get(API_SERVER_ADDR+str(suffix)))
+        res = json.loads(http_get(API_SERVER_ADDR + str(suffix)))
         return res
     except Exception:
         return {}
@@ -133,19 +133,21 @@ def check_redis_cluster():
 def create_redis_cluster(pods):
     hosts = ""
     for k, v in pods:
-        os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}",statefulset=CLUSTER_STATEFULSET_NAME,service=CLUSTER_SERVICE_NAME,nodeid=get_node_id_by_ip(v["ip"]))
-        hosts += v["ip"]+":$REDIS_PORT "
+        os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}",
+                  statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME, nodeid=get_node_id_by_ip(v["ip"]))
+        hosts += v["ip"] + ":$REDIS_PORT "
     os.system("redis-cli --cluster create --cluster-replicas $CLUSTER_REPLICAS")
 
 
 def get_node_id_by_ip(ip):
     try:
         cmd = "redis-cli -h {ip} -p $REDIS_PORT  cluster nodes | grep myself |awk '{print $1}".format(
-            statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME)
+            ip=ip)
         run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         return run.stdout.read().replace('\n', '')
     except Exception:
         return ""
+
 
 def is_new_pod():
     return os.path.exists(EXIST_FLAG_FILE)
@@ -226,7 +228,9 @@ def set_timeout(num, callback):
                 return r
             except RuntimeError:
                 return callback()
+
         return to_do
+
     return wrap
 
 
@@ -247,8 +251,12 @@ def wait_cluster_be_ready():
 def cluster_launcher():
     info = get_cluster_endpoint_info()
     if is_new_pod():
-        result = os.system("redis-server /home/redis/data/redis.conf && redis-cli -p $REDIS_PORT cluster meet {ip} {port}", ip=get_ip_by_podname(
-            info, CLUSTER_STATEFULSET_NAME+"-0"), port=REDIS_PORT)
+        result = os.system(" sed -i \"s/{pod_ip}/{my_pod_ip}/g\" /home/redis/data/redis.conf &&"
+                           " sed -i \"s/{cluster_enable}/yes/g\" /home/redis/data/redis.conf &&"
+                           " redis-server /home/redis/data/redis.conf  && sleep 1 &&"
+                           " sleep 1 &&"
+                           " redis-cli -p $REDIS_PORT cluster meet {ip} $REDIS_PORT", ip=get_ip_by_podname(
+            info, CLUSTER_STATEFULSET_NAME + "-0"), my_pod_ip=MY_POD_IP)
         if result == 0:
             write_file("1", EXIST_FLAG_FILE)
         else:
@@ -257,8 +265,10 @@ def cluster_launcher():
     else:
         info = get_cluster_endpoint_info()
         fix_cluster_config_file(info)
-        result = os.system("redis-server /home/redis/data/redis.conf && redis-cli -p $REDIS_PORT cluster meet {ip} {port}", ip=get_ip_by_podname(
-            info, CLUSTER_STATEFULSET_NAME+"-0"), port=REDIS_PORT)
+        result = os.system(
+            "redis-server /home/redis/data/redis.conf && redis-cli -p $REDIS_PORT cluster meet {ip} {port}",
+            ip=get_ip_by_podname(
+                info, CLUSTER_STATEFULSET_NAME + "-0"), port=REDIS_PORT)
         if not result == 0:
             error("Something wrong happened!please check your redis config file.")
             exit(1)
@@ -278,18 +288,20 @@ def ctrl_launcher():
     old_redis_cluster_nodes = 0
     while True:
         redis_cluster_nodes = get_redis_cluster_nodes()
-        if old_redis_cluster_nodes == 0 :
+        if old_redis_cluster_nodes == 0:
             time.sleep(5)
             old_redis_cluster_nodes = redis_cluster_nodes
         elif old_redis_cluster_nodes < redis_cluster_nodes:
             print("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
             time.sleep(REBALANCE_DELAY)
-            os.system("redis-cluster --cluster --rebalance {statefulset}-0.{service} ".format(statefulset = CLUSTER_STATEFULSET_NAME,service=CLUSTER_SERVICE_NAME))
+            os.system("redis-cluster --cluster --rebalance {statefulset}-0.{service} ".format(
+                statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME))
         elif old_redis_cluster_nodes == redis_cluster_nodes:
             check_redis_cluster()
             time.sleep(10)
         else:
             print("Something error happened!")
+
 
 def single_launcher():
     pass
@@ -297,10 +309,13 @@ def single_launcher():
 
 if __name__ == "__main__":
     if str(os.getenv("MODE")).lower() == "clusternode":
+        os.system("sed -i \"s/{mode}/ClusterNode/g\" /home/redis/data/logo")
         cluster_launcher()
     elif str(os.getenv("MODE")).lower() == "clusterctrl":
+        os.system("sed -i \"s/{mode}/ClusterCtrl/g\" /home/redis/data/logo")
         ctrl_launcher()
     elif str(os.getenv("MODE")).lower() == "singlenode":
+        os.system("sed -i \"s/{mode}/SingleNode/g\" /home/redis/data/logo")
         single_launcher()
     else:
         error(

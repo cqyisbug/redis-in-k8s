@@ -167,6 +167,8 @@ RUN set -ex; \
 COPY entrypoint.sh /home/redis/entrypoint.sh
 RUN chmod +X /home/redis/entrypoint.sh
 COPY ep.py /ep.py
+COPY logo /home/redis/data/logo
+COPY redis.conf /home/redis/data/redis.conf
 # CMD [ "/home/redis/entrypoint.sh" ]
 CMD [ "/ep.py" ]
 ENTRYPOINT [ "python" ]
