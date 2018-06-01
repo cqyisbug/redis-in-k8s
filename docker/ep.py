@@ -251,9 +251,7 @@ def set_timeout(num, callback):
             try:
                 signal.signal(signal.SIGALRM, handle)
                 signal.alarm(num)
-                # print('start alarm signal.')
                 r = func(*args, **kwargs)
-                # print('close alarm signal.')
                 signal.alarm(0)
                 return r
             except RuntimeError:
