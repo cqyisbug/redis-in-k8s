@@ -301,7 +301,7 @@ def cluster_launcher():
             write_file("1", EXIST_FLAG_FILE)
         else:
             error("Something wrong happened! Please check your redis config file.")
-            # exit(1)
+            exit(1)
     else:
         fix_cluster_config_file()
         result = os.system(
