@@ -170,7 +170,7 @@ def create_redis_cluster(pods):
                       statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME,
                       nodeid=get_node_id_by_ip(v["ip"]))
             hosts += v["ip"] + ":$REDIS_PORT "
-    os.system("redis-cli --cluster create --cluster-replicas $REDIS_CLUSTER_REPLICAS")
+    os.system("redis-cluster --cluster create --cluster-replicas $REDIS_CLUSTER_REPLICAS")
 
 
 def get_node_id_by_ip(ip):
