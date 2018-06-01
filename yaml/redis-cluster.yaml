@@ -30,9 +30,7 @@ spec:
           value: "1"
         - name: WAIT_TIMEOUT
           value: "30"
-        - name: STATEFULSET_REPLICAS
-          value: "3"
-        - name: CLUSTER_REPLICAS
+        - name: REDIS_CLUSTER_REPLICAS
           value: "0"
         - name: MY_POD_IP
           valueFrom:
@@ -74,9 +72,7 @@ spec:
           value: "1"
         - name: WAIT_TIMEOUT
           value: "30"
-        - name: STATEFULSET_REPLICAS
-          value: "3"
-        - name: CLUSTER_REPLICAS
+        - name: REDIS_CLUSTER_REPLICAS
           value: "0"
         - name: MY_POD_IP
           valueFrom:

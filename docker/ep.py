@@ -17,8 +17,9 @@ IP_PODNAME_RELATION_JSON = "{data_dic}relation.json".format(data_dic=DATA_DIC)
 CLUSTER_STATEFULSET_NAME = "redis-cluster-node"
 CLUSTER_SERVICE_NAME = "redis-cluster-svc"
 CLUSTER_NAMESPACE = "default"
-CLUSTER_REPLICAS = int(os.getenv("cluster_replicas".upper()))
-STATEFULSET_REPLICAS = int(os.getenv("statefulset_replicas".upper()))
+# REDIS_CLUSTER_REPLICAS = int(os.getenv("redis_cluster_replicas".upper()))
+
+REDIS_STATEFULSET_REPLICAS = int(os.getenv("redis_statefulset_replicas".upper()))
 API_SERVER_ADDR = os.getenv("api_server_addr".upper())
 WAIT_TIMEOUT = int(os.getenv("wait_timeout".upper()))
 REBALANCE_DELAY = int(os.getenv("rebalance_delay".upper()))
@@ -37,7 +38,8 @@ def info(out):
 
 
 def warn(out):
-    if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1" or str(LOG_LEVEL).upper() == "INFO" or str(LOG_LEVEL) == "0":
+    if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1" or str(LOG_LEVEL).upper() == "INFO" or str(
+            LOG_LEVEL) == "0":
         print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
               "  \033[33m" + str(out) + "\033[0m")
 
@@ -64,6 +66,34 @@ def api(suffix):
     except Exception:
         return {}
 
+
+def is_use_hostnetwork():
+    try:
+        return int(api("/apis/apps/v1/namespaces/{namespace}/statefulsets/{sts}".format(namespace=CLUSTER_NAMESPACE,
+                                                                                        sts=CLUSTER_STATEFULSET_NAME))[
+                       "items"]["spec"]["template"]["spec"]["hostNetwork"])
+    except Exception:
+        return False
+
+
+def get_redis_cluster_statefulset_replicas():
+    try:
+        return str(api("/apis/apps/v1/namespaces/{namespace}/statefulsets/{sts}".format(namespace=CLUSTER_NAMESPACE,
+                                                                                        sts=CLUSTER_STATEFULSET_NAME))[
+                       "items"]["spec"]["replicas"])
+    except Exception:
+        return 0
+
+def get_k8s_node_replicas():
+    try:
+       return len(api("/api/v1/nodes")["items"])
+    except Exception:
+        return 0
+
+
+REDIS_CLUSTER_REPLICAS = get_redis_cluster_statefulset_replicas()
+HOSTNETWORK = is_use_hostnetwork()
+K8S_NODE_REPLICAS = get_k8s_node_replicas()
 
 def cluster_exists():
     if cluster_statefulset_exists() and check_redis_cluster():
@@ -135,7 +165,7 @@ def create_redis_cluster(pods):
         os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}",
                   statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME, nodeid=get_node_id_by_ip(v["ip"]))
         hosts += v["ip"] + ":$REDIS_PORT "
-    os.system("redis-cli --cluster create --cluster-replicas $CLUSTER_REPLICAS")
+    os.system("redis-cli --cluster create --cluster-replicas $REDIS_CLUSTER_REPLICAS")
 
 
 def get_node_id_by_ip(ip):
@@ -234,16 +264,21 @@ def set_timeout(num, callback):
 
 
 def wait_timeout_handler():
-    print("Wait time out ,please check status of  kubernetes or check redis config files.")
-    return False
+    ready_pods = get_redis_cluster_ready_pods(return_int=True)
+    if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods < (REDIS_CLUSTER_REPLICAS + 1) * 3:
+        return True
+    else:
+        print("Wait time out ,please check status of  kubernetes or check redis config files.")
+        return False
 
 
 @set_timeout(WAIT_TIMEOUT, wait_timeout_handler)
 def wait_cluster_be_ready():
-    ready_pods = get_redis_cluster_ready_pods(return_int=True)
-    if (ready_pods + TOLERANCE) >= STATEFULSET_REPLICAS:
-        return True
-    else:
+    while True:
+        ready_pods = get_redis_cluster_ready_pods(return_int=True)
+        if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods < (REDIS_CLUSTER_REPLICAS + 1) * 3:
+            if ready_pods == REDIS_STATEFULSET_REPLICAS :
+                return True
         time.sleep(2)
 
 
@@ -307,10 +342,10 @@ def single_launcher():
 
 
 if __name__ == "__main__":
-    os.system(  'time=$(date "+%Y-%m-%d") &&'
-                'sed -i "s/{redis_version}/${REDIS_VERSION}/g" /home/redis/data/logo &&'
-                'sed -i "s/{port}/${REDIS_PORT}/g" /home/redis/data/logo &&'
-                'sed -i "s/{date}/${time}/g" /home/redis/data/logo &&')
+    os.system('time=$(date "+%Y-%m-%d") &&'
+              'sed -i "s/{redis_version}/${REDIS_VERSION}/g" /home/redis/data/logo &&'
+              'sed -i "s/{port}/${REDIS_PORT}/g" /home/redis/data/logo &&'
+              'sed -i "s/{date}/${time}/g" /home/redis/data/logo &&')
     if str(os.getenv("MODE")).lower() == "clusternode":
         os.system("sed -i \"s/{mode}/ClusterNode/g\" /home/redis/data/logo &&"
                   "cat /home/redis/data/logo")
