@@ -34,19 +34,19 @@ if not str(LOG_LEVEL):
 def info(out):
     if str(LOG_LEVEL).upper() == "INFO" or str(LOG_LEVEL) == "0":
         print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-              "  \033[34m" + str(out) + "\033[0m")
+              "\033[34m" + str(out) + "\033[0m")
 
 
 def warn(out):
     if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1" or str(LOG_LEVEL).upper() == "INFO" or str(
             LOG_LEVEL) == "0":
         print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-              "  \033[33m" + str(out) + "\033[0m")
+              "\033[33m" + str(out) + "\033[0m")
 
 
 def error(out):
     print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-          "  \033[31m" + str(out) + "\033[0m")
+          "\033[31m" + str(out) + "\033[0m")
 
 
 def http_get(url):
@@ -204,7 +204,7 @@ def get_cluster_endpoint_info():
     return {"ok": ok, "bad": bad}
 
 
-def fix_cluster_config_file(info):
+def fix_cluster_config_file():
     if os.path.exists(NODES_CONFIG_FILE):
         with io.open(NODES_CONFIG_FILE, 'r', encoding='utf-8') as config_stream:
             content = config_stream.read()
@@ -280,26 +280,31 @@ def wait_cluster_be_ready():
 
 
 def cluster_launcher():
-    info = get_cluster_endpoint_info()
+    endpoint_info = get_cluster_endpoint_info()
+    print("000000:"+str(get_ip_by_podname(
+            endpoint_info, CLUSTER_STATEFULSET_NAME + "-0")))
     if is_new_pod():
-        result = os.system(" sed -i \"s/{pod_ip}/{my_pod_ip}/g\" /home/redis/data/redis.conf &&"
-                           " sed -i \"s/{cluster_enable}/yes/g\" /home/redis/data/redis.conf &&"
-                           " redis-server /home/redis/data/redis.conf  && sleep 1 &&"
+        with io.open("/home/redis/data/redis.conf",'r', encoding='utf-8') as config_stream:
+            config = config_stream.read()
+            config = config.replace("{pod_ip}",MY_POD_IP)
+            config = config.replace("{cluster_enable}", "yes")
+            write_file(config,"/home/redis/data/redis.conf")
+        result = os.system(" redis-server /home/redis/data/redis.conf  &&"
                            " sleep 1 &&"
-                           " redis-cli -p $REDIS_PORT cluster meet {ip} $REDIS_PORT", ip=get_ip_by_podname(
-            info, CLUSTER_STATEFULSET_NAME + "-0"), my_pod_ip=MY_POD_IP)
+                           " redis-cli -p $REDIS_PORT cluster meet {ip} $REDIS_PORT".format(ip=get_ip_by_podname(
+            endpoint_info, CLUSTER_STATEFULSET_NAME + "-0"), my_pod_ip=MY_POD_IP))
         if result == 0:
             write_file("1", EXIST_FLAG_FILE)
         else:
-            error("Something wrong happened!please check your redis config file.")
+            error("Something wrong happened! Please check your redis config file.")
             exit(1)
     else:
-        info = get_cluster_endpoint_info()
-        fix_cluster_config_file(info)
+        endpoint_info = get_cluster_endpoint_info()
+        fix_cluster_config_file()
         result = os.system(
             "redis-server /home/redis/data/redis.conf && redis-cli -p $REDIS_PORT cluster meet {ip} {port}".format(
             ip=get_ip_by_podname(
-                info, CLUSTER_STATEFULSET_NAME + "-0"), port=REDIS_PORT))
+                endpoint_info, CLUSTER_STATEFULSET_NAME + "-0"), port=REDIS_PORT))
         if not result == 0:
             error("Something wrong happened!please check your redis config file.")
             exit(1)
@@ -330,7 +335,7 @@ def ctrl_launcher():
         elif old_redis_cluster_nodes < redis_cluster_nodes:
             print("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
             time.sleep(REBALANCE_DELAY)
-            os.system("redis-cluster --cluster --rebalance {statefulset}-0.{service} ".format(
+            os.system("echo yes | redis-cluster --cluster --rebalance {statefulset}-0.{service} ".format(
                 statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME))
         elif old_redis_cluster_nodes == redis_cluster_nodes:
             check_redis_cluster()
