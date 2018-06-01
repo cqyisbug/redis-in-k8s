@@ -166,9 +166,13 @@ RUN set -ex; \
 
 COPY ep.py /ep.py
 COPY logo.sh /logo.sh
-RUN chmod +x /logo.sh
+
 COPY logo /home/redis/data/logo
 COPY redis.conf /home/redis/data/redis.conf
+COPY redis-cluster /usr/local/bin/redis-cluster
+RUN chmod +x /logo.sh
+RUN chmod +x /usr/local/bin/redis-cluster
+
 CMD [ "/logo.sh" ]
 #CMD [ "/ep.py" ]
 ENTRYPOINT [ "bash" ,"-c" ]
