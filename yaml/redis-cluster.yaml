@@ -21,7 +21,7 @@ spec:
         - name: LOG_LEVEL
           value: "info"
         - name: API_SERVER_ADDR
-          value: "172.27.25.35:8080"
+          value: "http://172.27.25.35:8080"
         - name: REDIS_PORT
           value: "6380"
         - name: REBALANCE_DELAY
@@ -63,7 +63,7 @@ spec:
         - name: LOG_LEVEL
           value: "info"
         - name: API_SERVER_ADDR
-          value: "172.27.25.35:8080"
+          value: "http://172.27.25.35:8080"
         - name: REDIS_PORT
           value: "6380"
         - name: REBALANCE_DELAY

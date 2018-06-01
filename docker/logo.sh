@@ -18,4 +18,6 @@ sed -i "s/{date}/${time}/g" /home/redis/data/logo
 
 cat /home/redis/data/logo
 
+
+
 python /ep.py
