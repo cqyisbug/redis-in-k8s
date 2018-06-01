@@ -308,14 +308,21 @@ def single_launcher():
 
 
 if __name__ == "__main__":
+    os.system(  'time=$(date "+%Y-%m-%d") &&'
+                'sed -i "s/{redis_version}/${REDIS_VERSION}/g" /home/redis/data/logo &&'
+                'sed -i "s/{port}/${REDIS_PORT}/g" /home/redis/data/logo &&'
+                'sed -i "s/{date}/${time}/g" /home/redis/data/logo &&')
     if str(os.getenv("MODE")).lower() == "clusternode":
-        os.system("sed -i \"s/{mode}/ClusterNode/g\" /home/redis/data/logo")
+        os.system("sed -i \"s/{mode}/ClusterNode/g\" /home/redis/data/logo &&"
+                  "cat /home/redis/data/logo")
         cluster_launcher()
     elif str(os.getenv("MODE")).lower() == "clusterctrl":
-        os.system("sed -i \"s/{mode}/ClusterCtrl/g\" /home/redis/data/logo")
+        os.system("sed -i \"s/{mode}/ClusterCtrl/g\" /home/redis/data/logo &&"
+                  "cat /home/redis/data/logo")
         ctrl_launcher()
     elif str(os.getenv("MODE")).lower() == "singlenode":
-        os.system("sed -i \"s/{mode}/SingleNode/g\" /home/redis/data/logo")
+        os.system("sed -i \"s/{mode}/SingleNode/g\" /home/redis/data/logo &&"
+                  "cat /home/redis/data/logo")
         single_launcher()
     else:
         error(
