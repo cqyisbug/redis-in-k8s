@@ -17,9 +17,9 @@ IP_PODNAME_RELATION_JSON = "{data_dic}relation.json".format(data_dic=DATA_DIC)
 CLUSTER_STATEFULSET_NAME = "redis-cluster-node"
 CLUSTER_SERVICE_NAME = "redis-cluster-svc"
 CLUSTER_NAMESPACE = "default"
-# REDIS_CLUSTER_REPLICAS = int(os.getenv("redis_cluster_replicas".upper()))
+REDIS_CLUSTER_REPLICAS = int(os.getenv("redis_cluster_replicas".upper()))
 
-REDIS_STATEFULSET_REPLICAS = int(os.getenv("redis_statefulset_replicas".upper()))
+# REDIS_STATEFULSET_REPLICAS = int(os.getenv("redis_statefulset_replicas".upper()))
 API_SERVER_ADDR = os.getenv("api_server_addr".upper())
 WAIT_TIMEOUT = int(os.getenv("wait_timeout".upper()))
 REBALANCE_DELAY = int(os.getenv("rebalance_delay".upper()))
@@ -91,7 +91,7 @@ def get_k8s_node_replicas():
         return 0
 
 
-REDIS_CLUSTER_REPLICAS = get_redis_cluster_statefulset_replicas()
+REDIS_STATEFULSET_REPLICAS = get_redis_cluster_statefulset_replicas()
 HOSTNETWORK = is_use_hostnetwork()
 K8S_NODE_REPLICAS = get_k8s_node_replicas()
 
@@ -205,18 +205,19 @@ def get_cluster_endpoint_info():
 
 
 def fix_cluster_config_file(info):
-    with io.open(NODES_CONFIG_FILE, 'r', encoding='utf-8') as config_stream:
-        content = config_stream.read()
-        endpoint_info = get_cluster_endpoint_info()
-        with io.open(IP_PODNAME_RELATION_JSON, 'r', encoding='utf-8') as json_stream:
-            old_endpoint_info = json.load(json_stream)
-            for k, v in available(old_endpoint_info, 'ok'):
-                content = content.replace(v["ip"], get_ip_by_podname(
-                    endpoint_info, v["targetRef"]["name"]))
-            for k, v in available(old_endpoint_info, 'bad'):
-                content = content.replace(v["ip"], get_ip_by_podname(
-                    endpoint_info, v["targetRef"]["name"]))
-            write_file(content, NODES_CONFIG_FILE)
+    if os.path.exists(NODES_CONFIG_FILE):
+        with io.open(NODES_CONFIG_FILE, 'r', encoding='utf-8') as config_stream:
+            content = config_stream.read()
+            endpoint_info = get_cluster_endpoint_info()
+            with io.open(IP_PODNAME_RELATION_JSON, 'r', encoding='utf-8') as json_stream:
+                old_endpoint_info = json.load(json_stream)
+                for k, v in available(old_endpoint_info, 'ok'):
+                    content = content.replace(v["ip"], get_ip_by_podname(
+                        endpoint_info, v["targetRef"]["name"]))
+                for k, v in available(old_endpoint_info, 'bad'):
+                    content = content.replace(v["ip"], get_ip_by_podname(
+                        endpoint_info, v["targetRef"]["name"]))
+                write_file(content, NODES_CONFIG_FILE)
 
 
 def get_ip_by_podname(obj, name):
@@ -235,9 +236,9 @@ def save_ip_podname_relation():
 
 
 def available(o, k):
-    if o[k]:
+    try:
         return o[k]
-    else:
+    except Exception:
         return {}
 
 
@@ -300,9 +301,9 @@ def cluster_launcher():
         info = get_cluster_endpoint_info()
         fix_cluster_config_file(info)
         result = os.system(
-            "redis-server /home/redis/data/redis.conf && redis-cli -p $REDIS_PORT cluster meet {ip} {port}",
+            "redis-server /home/redis/data/redis.conf && redis-cli -p $REDIS_PORT cluster meet {ip} {port}".format(
             ip=get_ip_by_podname(
-                info, CLUSTER_STATEFULSET_NAME + "-0"), port=REDIS_PORT)
+                info, CLUSTER_STATEFULSET_NAME + "-0"), port=REDIS_PORT))
         if not result == 0:
             error("Something wrong happened!please check your redis config file.")
             exit(1)
@@ -342,21 +343,12 @@ def single_launcher():
 
 
 if __name__ == "__main__":
-    os.system('time=$(date "+%Y-%m-%d") &&'
-              'sed -i "s/{redis_version}/${REDIS_VERSION}/g" /home/redis/data/logo &&'
-              'sed -i "s/{port}/${REDIS_PORT}/g" /home/redis/data/logo &&'
-              'sed -i "s/{date}/${time}/g" /home/redis/data/logo &&')
+    os.system("sh  /logo.sh")
     if str(os.getenv("MODE")).lower() == "clusternode":
-        os.system("sed -i \"s/{mode}/ClusterNode/g\" /home/redis/data/logo &&"
-                  "cat /home/redis/data/logo")
         cluster_launcher()
     elif str(os.getenv("MODE")).lower() == "clusterctrl":
-        os.system("sed -i \"s/{mode}/ClusterCtrl/g\" /home/redis/data/logo &&"
-                  "cat /home/redis/data/logo")
         ctrl_launcher()
     elif str(os.getenv("MODE")).lower() == "singlenode":
-        os.system("sed -i \"s/{mode}/SingleNode/g\" /home/redis/data/logo &&"
-                  "cat /home/redis/data/logo")
         single_launcher()
     else:
         error(

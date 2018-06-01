@@ -164,11 +164,11 @@ RUN set -ex; \
 	rm -f get-pip.py
 
 
-COPY entrypoint.sh /home/redis/entrypoint.sh
-RUN chmod +X /home/redis/entrypoint.sh
 COPY ep.py /ep.py
+COPY logo.sh /logo.sh
+RUN chmod +x /logo.sh
 COPY logo /home/redis/data/logo
 COPY redis.conf /home/redis/data/redis.conf
-# CMD [ "/home/redis/entrypoint.sh" ]
-CMD [ "/ep.py" ]
-ENTRYPOINT [ "python" ]
+CMD [ "/logo.sh" ]
+#CMD [ "/ep.py" ]
+ENTRYPOINT [ "bash" ,"-c" ]
