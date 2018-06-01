@@ -256,9 +256,7 @@ def set_timeout(num, callback):
                 return r
             except RuntimeError:
                 return callback()
-
         return to_do
-
     return wrap
 
 
@@ -306,13 +304,18 @@ def cluster_launcher():
             error("Something wrong happened!please check your redis config file.")
             exit(1)
 
+    os.system("while [[ ! -f \"/home/redis/log/redis.log\" ]] ; do "
+              "    sleep 2"
+              "done ; "
+              "tail -F /home/redis/log/redis.log")
+
 
 def ctrl_launcher():
     if not cluster_exists():
         info("Loading cluster statefulset's info...")
         while not cluster_statefulset_exists():
             time.sleep(5)
-            print("tick tock........")
+            info("tick tock........")
         if wait_cluster_be_ready():
             create_redis_cluster(
                 get_redis_cluster_ready_pods(return_int=False))
@@ -341,7 +344,6 @@ def single_launcher():
 
 
 if __name__ == "__main__":
-    os.system("sh  /logo.sh")
     if str(os.getenv("MODE")).lower() == "clusternode":
         cluster_launcher()
     elif str(os.getenv("MODE")).lower() == "clusterctrl":

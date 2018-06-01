@@ -1,5 +1,7 @@
 #!/bin/bash
 
+mkdir -p /home/redis/log/
+
 time=$(date "+%Y-%m-%d")
 
 if [[ $MODE == "CLUSTERNODE" ]] ; then
