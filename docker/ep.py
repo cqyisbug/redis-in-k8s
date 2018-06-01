@@ -14,15 +14,15 @@ DATA_DIC = "home/redis/data/"
 EXIST_FLAG_FILE = "{data_dic}existflag".format(data_dic=DATA_DIC)
 NODES_CONFIG_FILE = "{data_dic}nodes.conf".format(data_dic=DATA_DIC)
 IP_PODNAME_RELATION_JSON = "{data_dic}relation.json".format(data_dic=DATA_DIC)
-CLUSTER_STATEFULSET_NAME = "sts-redis-cluster"
-CLUSTER_SERVICE_NAME = "svc-redis-cluster"
+CLUSTER_STATEFULSET_NAME = "redis-cluster-node"
+CLUSTER_SERVICE_NAME = "redis-cluster-svc"
 CLUSTER_NAMESPACE = "default"
-CLUSTER_REPLICAS = os.getenv("cluster_replicas".upper())
-STATEFULSET_REPLICAS = os.getenv("statefulset_replicas".upper())
+CLUSTER_REPLICAS = int(os.getenv("cluster_replicas".upper()))
+STATEFULSET_REPLICAS = int(os.getenv("statefulset_replicas".upper()))
 API_SERVER_ADDR = os.getenv("api_server_addr".upper())
-WAIT_TIMEOUT = os.getenv("wait_timeout".upper())
-REBALANCE_DELAY = os.getenv("rebalance_delay".upper())
-TOLERANCE = os.getenv("tolerance".upper())
+WAIT_TIMEOUT = int(os.getenv("wait_timeout".upper()))
+REBALANCE_DELAY = int(os.getenv("rebalance_delay".upper()))
+TOLERANCE = int(os.getenv("tolerance".upper()))
 LOG_LEVEL = os.getenv("log_level".upper())
 REDIS_PORT = os.getenv("redis_port".upper())
 MY_POD_IP = os.getenv("my_pod_ip".upper())
@@ -37,15 +37,14 @@ def info(out):
 
 
 def warn(out):
-    if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1":
+    if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1" or str(LOG_LEVEL).upper() == "INFO" or str(LOG_LEVEL) == "0":
         print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
               "  \033[33m" + str(out) + "\033[0m")
 
 
 def error(out):
-    if str(LOG_LEVEL).upper() == "ERROR" or str(LOG_LEVEL) == "2":
-        print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-              "  \033[31m" + str(out) + "\033[0m")
+    print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
+          "  \033[31m" + str(out) + "\033[0m")
 
 
 def http_get(url):
