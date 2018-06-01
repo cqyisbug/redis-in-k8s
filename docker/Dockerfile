@@ -164,14 +164,15 @@ RUN set -ex; \
 	rm -f get-pip.py
 
 
-COPY ep.py /ep.py
-COPY logo.sh /logo.sh
+
 
 COPY logo /home/redis/data/logo
 COPY redis.conf /home/redis/data/redis.conf
 COPY redis-cluster /usr/local/bin/redis-cluster
+COPY logo.sh /logo.sh
 RUN chmod +x /logo.sh
 RUN chmod +x /usr/local/bin/redis-cluster
+COPY ep.py /ep.py
 
 CMD [ "/logo.sh" ]
 #CMD [ "/ep.py" ]

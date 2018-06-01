@@ -133,7 +133,7 @@ def cluster_statefulset_exists():
         res = api(
             "/apis/apps/v1/namespaces/{namespace}/statefulsets".format(namespace=CLUSTER_NAMESPACE))
         if len(res["items"]) > 0:
-            for k, v in res["items"]:
+            for k in res["items"]:
                 if k["metadata"]["name"] == CLUSTER_STATEFULSET_NAME:
                     return True
         return False
@@ -146,17 +146,17 @@ def check_redis_cluster():
         statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME)
     run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     result = run.stdout.read()
-    if result.index("[ERR") <= 0 and result.index("[WARN") <= 0:
+    if result.find("[ERR") <= 0 and result.find("[WARN") <= 0:
         return 0
-    elif result.index("Nodes don't agree about configuration") > 0:
+    elif result.find("Nodes don't agree about configuration") > 0:
         return 1
-    elif result.index("in migrating state") > 0:
+    elif result.find("in migrating state") > 0:
         return 2
-    elif result.index("in importing state") > 0:
+    elif result.find("in importing state") > 0:
         return 3
-    elif result.index("covered by nodes") > 0:
+    elif result.find("covered by nodes") > 0:
         return 4
-    elif result.index("Invalid arguments") > 0:
+    elif result.find("Invalid arguments") > 0:
         return 5
     else:
         return 6
@@ -255,7 +255,6 @@ def set_timeout(num, callback):
     def wrap(func):
         def handle(signum, frame):
             raise RuntimeError
-
         def to_do(*args, **kwargs):
             try:
                 signal.signal(signal.SIGALRM, handle)
@@ -265,9 +264,7 @@ def set_timeout(num, callback):
                 return r
             except RuntimeError:
                 return callback()
-
         return to_do
-
     return wrap
 
 
@@ -299,23 +296,24 @@ def cluster_launcher():
             config = config.replace("{pod_ip}", MY_POD_IP)
             config = config.replace("{cluster_enable}", "yes")
             write_file(config, "/home/redis/data/redis.conf")
-        result = os.system(" redis-server /home/redis/data/redis.conf  &&"
-                           " sleep 1 &&"
-                           " redis-cli -p $REDIS_PORT cluster meet $(nslookup {ip}  2>/dev/null | grep Address | awk '{print $3}') $REDIS_PORT".format(
-            ip=get_ip_by_podname(
-                endpoint_info, CLUSTER_STATEFULSET_NAME + "-0")))
+        os.system(" redis-server /home/redis/data/redis.conf  &&"
+                           " sleep 1")
+        print(get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0"))
+        result = os.system(" sleep 2 && "
+                           " redis-cli -p $REDIS_PORT cluster meet {ip}  $REDIS_PORT".format(
+            ip=get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0")))
         if result == 0:
             write_file("1", EXIST_FLAG_FILE)
         else:
             error("Something wrong happened! Please check your redis config file.")
-            # exit(1)
+            exit(1)
     else:
         fix_cluster_config_file()
         result = os.system(
             "redis-server /home/redis/data/redis.conf ")
         if not result == 0:
             error("Something wrong happened! Please check your redis config file.")
-            # exit(1)
+            exit(1)
     os.system("while [[ ! -f \"/home/redis/log/redis.log\" ]] ; do "
               "    sleep 2 ;"
               "done ; "
