@@ -142,7 +142,7 @@ def cluster_statefulset_exists():
 
 
 def check_redis_cluster():
-    cmd = "redis-cli --cluster check {statefulset}-0.{service}:$REDIS_PORT".format(
+    cmd = "redis-cluster --cluster check {statefulset}-0.{service}:$REDIS_PORT".format(
         statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME)
     run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     result = run.stdout.read()
