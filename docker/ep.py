@@ -273,7 +273,7 @@ def wait_timeout_handler():
     if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods < (REDIS_CLUSTER_REPLICAS + 1) * 3:
         return True
     else:
-        print("Wait time out ,please check status of  kubernetes or check redis config files.")
+        print("Wait time out , Please check status of  Kubernetes(K8S) or check Redis config files.")
         return False
 
 
