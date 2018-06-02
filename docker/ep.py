@@ -78,9 +78,8 @@ def is_use_hostnetwork():
 
 def get_redis_cluster_statefulset_replicas():
     try:
-        return str(api("/apis/apps/v1/namespaces/{namespace}/statefulsets/{sts}".format(namespace=CLUSTER_NAMESPACE,
-                                                                                        sts=CLUSTER_STATEFULSET_NAME))[
-                       "items"]["spec"]["replicas"])
+        return int(api("/apis/apps/v1/namespaces/{namespace}/statefulsets/{sts}".
+                       format(namespace=CLUSTER_NAMESPACE,sts=CLUSTER_STATEFULSET_NAME))["spec"]["replicas"])
     except Exception:
         return 0
 
@@ -165,7 +164,7 @@ def check_redis_cluster():
 def create_redis_cluster(pods):
     hosts = ""
     if len(pods) > 0:
-        for k, v in pods:
+        for v in pods:
             os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}",
                       statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME,
                       nodeid=get_node_id_by_ip(v["ip"]))
@@ -255,6 +254,7 @@ def set_timeout(num, callback):
     def wrap(func):
         def handle(signum, frame):
             raise RuntimeError
+
         def to_do(*args, **kwargs):
             try:
                 signal.signal(signal.SIGALRM, handle)
@@ -264,13 +264,16 @@ def set_timeout(num, callback):
                 return r
             except RuntimeError:
                 return callback()
+
         return to_do
+
     return wrap
 
 
 def wait_timeout_handler():
     ready_pods = get_redis_cluster_ready_pods(return_int=True)
-    if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods < (REDIS_CLUSTER_REPLICAS + 1) * 3:
+    if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods >= (REDIS_CLUSTER_REPLICAS + 1) * 3:
+        #TODO 打印出几个pod没有起来
         return True
     else:
         print("Wait time out , Please check status of  Kubernetes(K8S) or check Redis config files.")
@@ -281,7 +284,7 @@ def wait_timeout_handler():
 def wait_cluster_be_ready():
     while True:
         ready_pods = get_redis_cluster_ready_pods(return_int=True)
-        if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods < (REDIS_CLUSTER_REPLICAS + 1) * 3:
+        if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods >= (REDIS_CLUSTER_REPLICAS + 1) * 3:
             if ready_pods == REDIS_STATEFULSET_REPLICAS:
                 return True
         time.sleep(2)
@@ -297,7 +300,7 @@ def cluster_launcher():
             config = config.replace("{cluster_enable}", "yes")
             write_file(config, "/home/redis/data/redis.conf")
         os.system(" redis-server /home/redis/data/redis.conf  &&"
-                           " sleep 1")
+                  " sleep 1")
         print(get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0"))
         result = os.system(" sleep 2 && "
                            " redis-cli -p $REDIS_PORT cluster meet {ip}  $REDIS_PORT".format(
@@ -330,6 +333,7 @@ def ctrl_launcher():
             create_redis_cluster(
                 get_redis_cluster_ready_pods(return_int=False))
         else:
+            # TODO
             exit(1)
     old_redis_cluster_nodes = 0
     while True:
@@ -340,8 +344,9 @@ def ctrl_launcher():
         elif old_redis_cluster_nodes < redis_cluster_nodes:
             print("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
             time.sleep(REBALANCE_DELAY)
-            os.system("echo yes | redis-cluster --cluster --rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address | awk '{print $3}') ".format(
-                statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME))
+            os.system(
+                "echo yes | redis-cluster --cluster --rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address | awk '{print $3}') ".format(
+                    statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME))
         elif old_redis_cluster_nodes == redis_cluster_nodes:
             check_redis_cluster()
             time.sleep(10)
