@@ -4,7 +4,7 @@ MAINTAINER caiqy cqyisbug@163.com
 
 #******************** -Redis-  *********************
 
-RUN apk add --no-cache 'su-exec>=0.2' sed bash 
+RUN apk add --no-cache 'su-exec>=0.2' sed bash ruby
 
 ENV REDIS_VERSION 4.0.8
 ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz
@@ -48,6 +48,13 @@ RUN set -ex; \
 	\
     apk del .build-deps ; \
 	apk add --no-cache curl jq 
+
+#  安装ruby环境  由于ruby的原因安装gem install redis的时候会稍微报点错,但是这个错误在docker里面会被捕捉到,所以放到shell 脚本里面去了
+#  RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/
+#  RUN gem install redis -V
+#  RUN export PATH="$PATH:/usr/src/redis/src/"
+
+RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/;
 
 EXPOSE 6379
 EXPOSE 6380
@@ -165,13 +172,13 @@ RUN set -ex; \
 
 
 
-
+COPY redis-4.0.1.gem /redis.gem
+COPY rdoc-6.0.0.gem /rdoc.gem
 COPY logo /home/redis/data/logo
 COPY redis.conf /home/redis/data/redis.conf
-COPY redis-cluster /usr/local/bin/redis-cluster
+COPY redis-trib.rb /usr/local/bin/redis-trib.rb
 COPY logo.sh /logo.sh
-RUN chmod +x /logo.sh
-RUN chmod +x /usr/local/bin/redis-cluster
+RUN chmod +x /logo.sh /usr/local/bin/redis-trib.rb
 COPY ep.py /ep.py
 
 CMD [ "/logo.sh" ]

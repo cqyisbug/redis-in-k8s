@@ -141,7 +141,7 @@ def cluster_statefulset_exists():
 
 
 def check_redis_cluster():
-    cmd = "redis-cluster --cluster check {statefulset}-0.{service}:$REDIS_PORT".format(
+    cmd = "redis-trib.rb check {statefulset}-0.{service}:$REDIS_PORT".format(
         statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME)
     run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
     result = run.stdout.read()
@@ -165,11 +165,13 @@ def create_redis_cluster(pods):
     hosts = ""
     if len(pods) > 0:
         for v in pods:
-            os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}",
-                      statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME,
-                      nodeid=get_node_id_by_ip(v["ip"]))
+            os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}".format(
+                      statefulset=CLUSTER_STATEFULSET_NAME,
+                      service=CLUSTER_SERVICE_NAME,
+                      nodeid=get_node_id_by_ip(v["ip"])))
             hosts += v["ip"] + ":$REDIS_PORT "
-    os.system("redis-cluster --cluster create --cluster-replicas $REDIS_CLUSTER_REPLICAS")
+    print (hosts)
+    os.system("redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS {hosts}".format(hosts= hosts))
 
 
 def get_node_id_by_ip(ip):
@@ -345,7 +347,7 @@ def ctrl_launcher():
             print("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
             time.sleep(REBALANCE_DELAY)
             os.system(
-                "echo yes | redis-cluster --cluster --rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address | awk '{print $3}') ".format(
+                "echo yes | redis-trib.rb --rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address | awk '{print $3}') ".format(
                     statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME))
         elif old_redis_cluster_nodes == redis_cluster_nodes:
             check_redis_cluster()
