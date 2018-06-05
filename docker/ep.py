@@ -70,8 +70,8 @@ def api(suffix):
 def is_use_hostnetwork():
     try:
         return int(api("/apis/apps/v1/namespaces/{namespace}/statefulsets/{sts}".format(namespace=CLUSTER_NAMESPACE,
-                                                                                        sts=CLUSTER_STATEFULSET_NAME))[
-                       "items"]["spec"]["template"]["spec"]["hostNetwork"])
+                                                                                        sts=CLUSTER_STATEFULSET_NAME))
+                   ["items"]["spec"]["template"]["spec"]["hostNetwork"])
     except Exception:
         return False
 
@@ -79,7 +79,7 @@ def is_use_hostnetwork():
 def get_redis_cluster_statefulset_replicas():
     try:
         return int(api("/apis/apps/v1/namespaces/{namespace}/statefulsets/{sts}".
-                       format(namespace=CLUSTER_NAMESPACE,sts=CLUSTER_STATEFULSET_NAME))["spec"]["replicas"])
+                       format(namespace=CLUSTER_NAMESPACE, sts=CLUSTER_STATEFULSET_NAME))["spec"]["replicas"])
     except Exception:
         return 0
 
@@ -97,7 +97,7 @@ K8S_NODE_REPLICAS = get_k8s_node_replicas()
 
 
 def cluster_exists():
-    if cluster_statefulset_exists() and check_redis_cluster():
+    if check_redis_cluster() != 5 and check_redis_cluster() != 6:
         return True
     else:
         return False
@@ -164,19 +164,21 @@ def check_redis_cluster():
 def create_redis_cluster(pods):
     hosts = ""
     if len(pods) > 0:
+        print(len(pods))
         for v in pods:
-            os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}".format(
-                      statefulset=CLUSTER_STATEFULSET_NAME,
-                      service=CLUSTER_SERVICE_NAME,
-                      nodeid=get_node_id_by_ip(v["ip"])))
+            # print("forget pod ...")
+            # os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}".format(
+            #           statefulset=CLUSTER_STATEFULSET_NAME,
+            #           service=CLUSTER_SERVICE_NAME,
+            #           nodeid=get_node_id_by_ip(v["ip"])))
             hosts += v["ip"] + ":$REDIS_PORT "
     print (hosts)
-    os.system("redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS {hosts}".format(hosts= hosts))
+    os.system("echo yes|redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS {hosts}".format(hosts=hosts))
 
 
 def get_node_id_by_ip(ip):
     try:
-        cmd = "redis-cli -h {ip} -p $REDIS_PORT  cluster nodes | grep myself |awk '{print $1}".format(
+        cmd = "redis-cli -h {ip} -p $REDIS_PORT  cluster nodes | grep myself |awk '{print $1}'".format(
             ip=ip)
         run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         return run.stdout.read().replace('\n', '')
@@ -211,6 +213,7 @@ def get_cluster_endpoint_info():
 
 
 def fix_cluster_config_file():
+    info("Start fixing old cluster config file...")
     if os.path.exists(NODES_CONFIG_FILE):
         with io.open(NODES_CONFIG_FILE, 'r', encoding='utf-8') as config_stream:
             content = config_stream.read()
@@ -252,7 +255,7 @@ def available(o, k):
         return {}
 
 
-def set_timeout(num, callback):
+def timeout(num, callback):
     def wrap(func):
         def handle(signum, frame):
             raise RuntimeError
@@ -272,23 +275,40 @@ def set_timeout(num, callback):
     return wrap
 
 
-def wait_timeout_handler():
+def ready_wait_timeout_handler():
     ready_pods = get_redis_cluster_ready_pods(return_int=True)
     if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods >= (REDIS_CLUSTER_REPLICAS + 1) * 3:
-        #TODO 打印出几个pod没有起来
+        bads = REDIS_STATEFULSET_REPLICAS - len(ready_pods)
+        if bads != 0:
+            warn("{bads} pod(s) is(are) not ready!".format(bads=bads))
         return True
     else:
         print("Wait time out , Please check status of  Kubernetes(K8S) or check Redis config files.")
         return False
 
 
-@set_timeout(WAIT_TIMEOUT, wait_timeout_handler)
-def wait_cluster_be_ready():
+@timeout(WAIT_TIMEOUT, ready_wait_timeout_handler)
+def wait_cluster_node_be_ready():
     while True:
         ready_pods = get_redis_cluster_ready_pods(return_int=True)
         if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods >= (REDIS_CLUSTER_REPLICAS + 1) * 3:
             if ready_pods == REDIS_STATEFULSET_REPLICAS:
                 return True
+        time.sleep(2)
+
+
+def check_cluster_timeout_handler():
+    if get_redis_cluster_nodes() == 1:
+        return False
+    else:
+        return True
+
+
+@timeout(WAIT_TIMEOUT, check_cluster_timeout_handler)
+def checking_cluster():
+    while True:
+        if get_redis_cluster_nodes(return_int=True) > 1:
+            return True
         time.sleep(2)
 
 
@@ -301,19 +321,23 @@ def cluster_launcher():
             config = config.replace("{pod_ip}", MY_POD_IP)
             config = config.replace("{cluster_enable}", "yes")
             write_file(config, "/home/redis/data/redis.conf")
+        info("Start redis server ....")
         os.system(" redis-server /home/redis/data/redis.conf  &&"
                   " sleep 1")
         print(get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0"))
-        result = os.system(" sleep 2 && "
-                           " redis-cli -p $REDIS_PORT cluster meet {ip}  $REDIS_PORT".format(
-            ip=get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0")))
-        if result == 0:
-            write_file("1", EXIST_FLAG_FILE)
-        else:
-            error("Something wrong happened! Please check your redis config file.")
-            exit(1)
+        if get_redis_cluster_nodes() != 1:
+            info("I found the cluster , join it~")
+            result = os.system(" sleep 2 && "
+                               " redis-cli -p $REDIS_PORT cluster meet {ip}  $REDIS_PORT".format(
+                ip=get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0")))
+            # TODO if needed ,new node become a slave
+            if result != 0:
+                error("Something wrong happened! Please check your redis config file.")
+                exit(1)
+        write_file("1", EXIST_FLAG_FILE)
     else:
         fix_cluster_config_file()
+        info("Start redis server ....")
         result = os.system(
             "redis-server /home/redis/data/redis.conf ")
         if not result == 0:
@@ -326,16 +350,18 @@ def cluster_launcher():
 
 
 def ctrl_launcher():
-    if not cluster_exists():
-        info("Loading cluster statefulset's info...")
+    if not checking_cluster():
+        info("Could not find the Redis Cluster,start creating it.")
+        info("Loading redis cluster statefulset's info...")
         while not cluster_statefulset_exists():
             time.sleep(5)
             info("tick tock........")
-        if wait_cluster_be_ready():
+        if wait_cluster_node_be_ready():
             create_redis_cluster(
                 get_redis_cluster_ready_pods(return_int=False))
         else:
-            # TODO
+            error("Wait Timeout! Please check the redis cluster node pod!")
+            time.sleep(10)
             exit(1)
     old_redis_cluster_nodes = 0
     while True:
@@ -370,4 +396,4 @@ if __name__ == "__main__":
         single_launcher()
     else:
         error(
-            "Environment of Redis Mode error! Mode must be \"ClusterNode\",\"ClusterCtrl\",\"SingleNode\" ")
+            "Environment of Redis Mode error! Mode must be \"ClusterNode\"|\"ClusterCtrl\"|\"SingleNode\" ")
