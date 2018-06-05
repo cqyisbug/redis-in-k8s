@@ -178,9 +178,9 @@ def create_redis_cluster(pods):
 
 def get_node_id_by_ip(ip):
     try:
-        cmd = "redis-cli -h {ip} -p $REDIS_PORT  cluster nodes | grep myself |awk '{print $1}'".format(
+        cmd = "redis-cli -h {ip} -p $REDIS_PORT  cluster nodes | grep myself ".format(
             ip=ip)
-        run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        run = subprocess.Popen(cmd+"|awk '{print $1}'", shell=True, stdout=subprocess.PIPE)
         return run.stdout.read().replace('\n', '')
     except Exception:
         return ""
@@ -312,6 +312,28 @@ def checking_cluster():
         time.sleep(2)
 
 
+def get_master_without_slave():
+    try:
+        cmd = "redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT  cluster nodes | grep master".format(
+            statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME)
+        run = subprocess.Popen(cmd + "|awk '{print $1}'", shell=True, stdout=subprocess.PIPE)
+        out = run.stdout.read().split("\n")
+
+        cmd = "redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT  cluster nodes | grep slave | grep {nodeid}|wc -l"
+        for o in out:
+            error(o)
+            if len(o) != 0:
+                run = subprocess.Popen(
+                    cmd.format(statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME, nodeid=o),
+                    shell=True, stdout=subprocess.PIPE)
+                if int(run.stdout.read().replace('\n', '')) == 0:
+                    return o
+
+        return ""
+    except Exception:
+        return ""
+
+
 def cluster_launcher():
     endpoint_info = get_cluster_endpoint_info()
     if is_new_pod():
@@ -330,9 +352,17 @@ def cluster_launcher():
             result = os.system(" sleep 2 && "
                                " redis-cli -p $REDIS_PORT cluster meet {ip}  $REDIS_PORT".format(
                 ip=get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0")))
-            # TODO if needed ,new node become a slave
+            master_without_slave = get_master_without_slave()
+            if len(master_without_slave) != 0:
+                info("Replicate node -> {nodeid}".format(nodeid=master_without_slave))
+                replicate_res = os.system(" sleep 2 && "
+                                          " redis-cli -p $REDIS_PORT cluster replicate {nodeid}"
+                                          .format(nodeid=master_without_slave))
+                if replicate_res != 0:
+                    error("Something wrong happened in cluster replicate ! Please check your redis config file.")
+                    exit(1)
             if result != 0:
-                error("Something wrong happened! Please check your redis config file.")
+                error("Something wrong happened in cluster meet ! Please check your redis config file.")
                 exit(1)
         write_file("1", EXIST_FLAG_FILE)
     else:
@@ -373,8 +403,8 @@ def ctrl_launcher():
             print("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
             time.sleep(REBALANCE_DELAY)
             os.system(
-                "echo yes | redis-trib.rb --rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address | awk '{print $3}') ".format(
-                    statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME))
+                "echo yes | redis-trib.rb --rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address ".format(
+                    statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME) + "| awk '{print $3}') ")
         elif old_redis_cluster_nodes == redis_cluster_nodes:
             check_redis_cluster()
             time.sleep(10)
