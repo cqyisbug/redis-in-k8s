@@ -43,6 +43,7 @@ RUN set -ex; \
 	make -C /usr/src/redis install; \
 	\
 	mkdir -p /home/redis ;\
+	mkdir -p /redis/data ;\
 	\
 	rm -r /usr/src/redis; \
 	\
@@ -174,8 +175,8 @@ RUN set -ex; \
 
 COPY redis-4.0.1.gem /redis.gem
 COPY rdoc-6.0.0.gem /rdoc.gem
-COPY logo /home/redis/data/logo
-COPY redis.conf /home/redis/data/redis.conf
+COPY logo /redis/data/logo
+COPY redis.conf /redis/data/redis.conf
 COPY redis-trib.rb /usr/local/bin/redis-trib.rb
 COPY logo.sh /logo.sh
 RUN chmod +x /logo.sh /usr/local/bin/redis-trib.rb

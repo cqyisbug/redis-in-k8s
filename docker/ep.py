@@ -162,15 +162,11 @@ def check_redis_cluster():
 
 
 def create_redis_cluster(pods):
+    info("Creating the Redis Cluster...")
     hosts = ""
     if len(pods) > 0:
         print(len(pods))
         for v in pods:
-            # print("forget pod ...")
-            # os.system("redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT cluster forget {nodeid}".format(
-            #           statefulset=CLUSTER_STATEFULSET_NAME,
-            #           service=CLUSTER_SERVICE_NAME,
-            #           nodeid=get_node_id_by_ip(v["ip"])))
             hosts += v["ip"] + ":$REDIS_PORT "
     print (hosts)
     os.system("echo yes|redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS {hosts}".format(hosts=hosts))
@@ -180,7 +176,7 @@ def get_node_id_by_ip(ip):
     try:
         cmd = "redis-cli -h {ip} -p $REDIS_PORT  cluster nodes | grep myself ".format(
             ip=ip)
-        run = subprocess.Popen(cmd+"|awk '{print $1}'", shell=True, stdout=subprocess.PIPE)
+        run = subprocess.Popen(cmd+"| awk '{print $1}'", shell=True, stdout=subprocess.PIPE)
         return run.stdout.read().replace('\n', '')
     except Exception:
         return ""
@@ -306,6 +302,7 @@ def check_cluster_timeout_handler():
 
 @timeout(WAIT_TIMEOUT, check_cluster_timeout_handler)
 def checking_cluster():
+    info("Check the Redis cluster exists or not.")
     while True:
         if get_redis_cluster_nodes(return_int=True) > 1:
             return True
@@ -321,7 +318,6 @@ def get_master_without_slave():
 
         cmd = "redis-cli -h {statefulset}-0.{service} -p $REDIS_PORT  cluster nodes | grep slave | grep {nodeid}|wc -l"
         for o in out:
-            error(o)
             if len(o) != 0:
                 run = subprocess.Popen(
                     cmd.format(statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME, nodeid=o),
@@ -343,12 +339,11 @@ def cluster_launcher():
             config = config.replace("{pod_ip}", MY_POD_IP)
             config = config.replace("{cluster_enable}", "yes")
             write_file(config, "/home/redis/data/redis.conf")
-        info("Start redis server ....")
+        info("Start Redis server ....")
         os.system(" redis-server /home/redis/data/redis.conf  &&"
                   " sleep 1")
-        print(get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0"))
         if get_redis_cluster_nodes() != 1:
-            info("I found the cluster , join it~")
+            info("Found the cluster , join it~")
             result = os.system(" sleep 2 && "
                                " redis-cli -p $REDIS_PORT cluster meet {ip}  $REDIS_PORT".format(
                 ip=get_ip_by_podname(endpoint_info, CLUSTER_STATEFULSET_NAME + "-0")))
@@ -364,6 +359,9 @@ def cluster_launcher():
             if result != 0:
                 error("Something wrong happened in cluster meet ! Please check your redis config file.")
                 exit(1)
+        else:
+            info("Could not find the cluster,do nothing!")
+        info("Write started flag....")
         write_file("1", EXIST_FLAG_FILE)
     else:
         fix_cluster_config_file()
@@ -380,6 +378,7 @@ def cluster_launcher():
 
 
 def ctrl_launcher():
+
     if not checking_cluster():
         info("Could not find the Redis Cluster,start creating it.")
         info("Loading redis cluster statefulset's info...")
@@ -403,7 +402,7 @@ def ctrl_launcher():
             print("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
             time.sleep(REBALANCE_DELAY)
             os.system(
-                "echo yes | redis-trib.rb --rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address ".format(
+                "echo yes | redis-trib.rb rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address ".format(
                     statefulset=CLUSTER_STATEFULSET_NAME, service=CLUSTER_SERVICE_NAME) + "| awk '{print $3}') ")
         elif old_redis_cluster_nodes == redis_cluster_nodes:
             check_redis_cluster()
