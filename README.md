@@ -1,5 +1,7 @@
 New Redis cluster solution
 ====
+ 
+ **unstable 版本正在测试过程中,master分支为稳定版本.两个分支的逻辑是不同的.**   
 
 ![solution](./new.jpg)  
 
