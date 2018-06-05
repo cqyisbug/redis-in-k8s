@@ -11,7 +11,7 @@ import io
 import signal
 
 DATA_DIC = "home/redis/data/"
-EXIST_FLAG_FILE = "/existflag"
+EXIST_FLAG_FILE = "{data_dic}existflag".format(data_dic=DATA_DIC)
 NODES_CONFIG_FILE = "{data_dic}nodes.conf".format(data_dic=DATA_DIC)
 IP_PODNAME_RELATION_JSON = "{data_dic}relation.json".format(data_dic=DATA_DIC)
 CLUSTER_STATEFULSET_NAME = "redis-cluster-node"
@@ -33,20 +33,26 @@ if not str(LOG_LEVEL):
 
 def info(out):
     if str(LOG_LEVEL).upper() == "INFO" or str(LOG_LEVEL) == "0":
-        print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-              "\033[34m" + str(out) + "\033[0m")
+        os.system("echo -e \"{time} - \033[34m{message}\033[0m\""
+                  .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())),message=out))
+        # print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
+        #       "\033[34m" + str(out) + "\033[0m")
 
 
 def warn(out):
     if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1" or str(LOG_LEVEL).upper() == "INFO" or str(
             LOG_LEVEL) == "0":
-        print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-              "\033[33m" + str(out) + "\033[0m")
+        os.system("echo -e \"{time} - \033[33m{message}\033[0m\""
+                  .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())), message=out))
+        # print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
+        #       "\033[33m" + str(out) + "\033[0m")
 
 
 def error(out):
-    print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
-          "\033[31m" + str(out) + "\033[0m")
+    os.system("echo -e \"{time} - \033[31m{message}\033[0m\""
+              .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())), message=out))
+    # print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
+    #       "\033[31m" + str(out) + "\033[0m")
 
 
 def http_get(url):
@@ -164,11 +170,15 @@ def check_redis_cluster():
 def create_redis_cluster(pods):
     info("Creating the Redis Cluster...")
     hosts = ""
+    cmd = "redis-cli -h {ip} -p $REDIS_PORT ping | grep -i \"PONG\""
     if len(pods) > 0:
         print(len(pods))
         for v in pods:
+            ping_res = os.system(cmd.format(ip=v["ip"]))
+            while ping_res != 0 :
+                time.sleep(3)
+                ping_res = os.system(cmd.format(ip=v["ip"]))
             hosts += v["ip"] + ":$REDIS_PORT "
-    print (hosts)
     os.system("echo yes|redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS {hosts}".format(hosts=hosts))
 
 
@@ -378,7 +388,6 @@ def cluster_launcher():
 
 
 def ctrl_launcher():
-
     if not checking_cluster():
         info("Could not find the Redis Cluster,start creating it.")
         info("Loading redis cluster statefulset's info...")
@@ -399,7 +408,7 @@ def ctrl_launcher():
             time.sleep(5)
             old_redis_cluster_nodes = redis_cluster_nodes
         elif old_redis_cluster_nodes < redis_cluster_nodes:
-            print("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
+            info("After {delay} seconds, Redis Controller will send rebalance command ".format(delay=REBALANCE_DELAY))
             time.sleep(REBALANCE_DELAY)
             os.system(
                 "echo yes | redis-trib.rb rebalance $(nslookup {statefulset}-0.{service}:$REDIS_PORT 2>/dev/null | grep Address ".format(
