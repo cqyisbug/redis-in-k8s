@@ -9,6 +9,7 @@ import json
 import subprocess
 import io
 import signal
+import threading
 
 DATA_DIC = "home/redis/data/"
 EXIST_FLAG_FILE = "{data_dic}existflag".format(data_dic=DATA_DIC)
@@ -40,8 +41,8 @@ def info(out):
 
 
 def warn(out):
-    if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1" or str(LOG_LEVEL).upper() == "INFO" or str(
-            LOG_LEVEL) == "0":
+    if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1" or str(LOG_LEVEL).upper() == "ERROR" or str(
+            LOG_LEVEL) == "2":
         os.system("echo -e \"{time} - \033[33m{message}\033[0m\""
                   .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())), message=out))
         # print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
@@ -173,10 +174,10 @@ def create_redis_cluster(pods):
     cmd = "redis-cli -h {ip} -p $REDIS_PORT ping | grep -i \"PONG\""
     if len(pods) > 0:
         for v in pods:
-            ping_res = os.system(cmd.format(ip=v["ip"]))
-            while ping_res != 0 :
-                time.sleep(3)
-                ping_res = os.system(cmd.format(ip=v["ip"]))
+            # ping_res = os.system(cmd.format(ip=v["ip"]))
+            # while ping_res != 0 :
+            #     time.sleep(3)
+            #     ping_res = os.system(cmd.format(ip=v["ip"]))
             hosts += v["ip"] + ":$REDIS_PORT "
     os.system("echo yes|redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS {hosts}".format(hosts=hosts))
 
@@ -226,17 +227,19 @@ def fix_cluster_config_file():
             with io.open(IP_PODNAME_RELATION_JSON, 'r', encoding='utf-8') as json_stream:
                 old_endpoint_info = json.load(json_stream)
                 if len(available(old_endpoint_info, 'ok')) > 0:
-                    for k, v in available(old_endpoint_info, 'ok'):
+                    for v in available(old_endpoint_info, 'ok'):
                         content = content.replace(v["ip"], get_ip_by_podname(
                             endpoint_info, v["targetRef"]["name"]))
                 if len(available(old_endpoint_info, 'bad')) > 0:
-                    for k, v in available(old_endpoint_info, 'bad'):
+                    for v in available(old_endpoint_info, 'bad'):
                         content = content.replace(v["ip"], get_ip_by_podname(
                             endpoint_info, v["targetRef"]["name"]))
                 write_file(content, NODES_CONFIG_FILE)
 
 
 def get_ip_by_podname(obj, name):
+    error(json.dumps(obj))
+    error(name)
     if len(available(obj, 'ok')) > 0:
         for v in available(obj, 'ok'):
             if v["targetRef"]["name"] == name:
@@ -245,10 +248,11 @@ def get_ip_by_podname(obj, name):
         for v in available(obj, 'bad'):
             if v["targetRef"]["name"] == name:
                 return v["ip"]
-    return False
+    return ""
 
 
 def save_ip_podname_relation():
+    warn(json.dumps(get_cluster_endpoint_info()))
     write_file(json.dumps(get_cluster_endpoint_info()),
                IP_PODNAME_RELATION_JSON)
 
@@ -281,8 +285,8 @@ def timeout(num, callback):
 
 
 def ready_wait_timeout_handler():
-    ready_pods = get_redis_cluster_ready_pods(return_int=True)
-    if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods >= (REDIS_CLUSTER_REPLICAS + 1) * 3:
+    ready_pods = get_redis_cluster_ready_pods(return_int=False)
+    if (len(ready_pods) + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and len(ready_pods) >= (REDIS_CLUSTER_REPLICAS + 1) * 3:
         bads = REDIS_STATEFULSET_REPLICAS - len(ready_pods)
         if bads != 0:
             warn("{bads} pod(s) is(are) not ready!".format(bads=bads))
@@ -292,13 +296,26 @@ def ready_wait_timeout_handler():
         return False
 
 
-@timeout(WAIT_TIMEOUT, ready_wait_timeout_handler)
-def wait_cluster_node_be_ready():
+@timeout(WAIT_TIMEOUT*get_redis_cluster_statefulset_replicas(), ready_wait_timeout_handler)
+def wait_cluster_node_be_ready(check_redis_state=True):
     while True:
-        ready_pods = get_redis_cluster_ready_pods(return_int=True)
-        if (ready_pods + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and ready_pods >= (REDIS_CLUSTER_REPLICAS + 1) * 3:
-            if ready_pods == REDIS_STATEFULSET_REPLICAS:
-                return True
+        ready_pods = get_redis_cluster_ready_pods(return_int=False)
+        if (len(ready_pods) + TOLERANCE) >= REDIS_STATEFULSET_REPLICAS and len(ready_pods) >= (REDIS_CLUSTER_REPLICAS + 1) * 3:
+            if len(ready_pods) == REDIS_STATEFULSET_REPLICAS:
+                state = True
+                if check_redis_state :
+                    for v in ready_pods:
+                        cmd = "redis-cli -h {ip} -p $REDIS_PORT ping | grep -i \"PONG\""
+                        ping_res = os.system(cmd.format(ip=v["ip"]))
+                        if ping_res == 0 :
+                            continue
+                        else:
+                            state = False
+                            break
+                if state:
+                    return state
+                else:
+                    break
         time.sleep(2)
 
 
@@ -309,7 +326,7 @@ def check_cluster_timeout_handler():
         return True
 
 
-@timeout(WAIT_TIMEOUT, check_cluster_timeout_handler)
+@timeout(WAIT_TIMEOUT*get_redis_cluster_statefulset_replicas(), check_cluster_timeout_handler)
 def checking_cluster():
     info("Check the Redis cluster exists or not.")
     while True:
@@ -338,6 +355,17 @@ def get_master_without_slave():
     except Exception:
         return ""
 
+def bg_task(save_relation=True):
+    while True:
+        try:
+            cmd = "redis-trib.rb check --health $MY_POD_IP:$REDIS_PORT "
+            run = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            out = run.stdout.read().replace('\n', '')
+            o = json.loads(out)
+            if int(o["code"]) == 0 :
+                save_ip_podname_relation()
+        except Exception:
+            time.sleep(2)
 
 def cluster_launcher():
     endpoint_info = get_cluster_endpoint_info()
@@ -373,14 +401,19 @@ def cluster_launcher():
         info("Write started flag....")
         write_file("1", EXIST_FLAG_FILE)
     else:
-        fix_cluster_config_file()
-        save_ip_podname_relation()
-        info("Start redis server ....")
-        result = os.system(
-            "redis-server /home/redis/data/redis.conf ")
-        if not result == 0:
-            error("Something wrong happened! Please check your redis config file.")
+        if wait_cluster_node_be_ready(check_redis_state=False):
+            fix_cluster_config_file()
+            info("Start redis server ....")
+            result = os.system(
+                "redis-server /home/redis/data/redis.conf ")
+            if not result == 0:
+                error("Something wrong happened! Please check your Redis config file.")
+                exit(1)
+        else:
+            error("Something wrong happened! Please check your Tolerance config!")
             exit(1)
+    bg_task_thread = threading.Thread(target=bg_task)
+    bg_task_thread.start()
     os.system("while [[ ! -f \"/home/redis/log/redis.log\" ]] ; do "
               "    sleep 2 ;"
               "done ; "
