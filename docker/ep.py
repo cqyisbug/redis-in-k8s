@@ -34,7 +34,7 @@ if not str(LOG_LEVEL):
 def info(out):
     if str(LOG_LEVEL).upper() == "INFO" or str(LOG_LEVEL) == "0":
         os.system("echo -e \"{time} - \033[34m{message}\033[0m\""
-                  .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())),message=out))
+                  .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())),message=out))
         # print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
         #       "\033[34m" + str(out) + "\033[0m")
 
@@ -43,14 +43,14 @@ def warn(out):
     if str(LOG_LEVEL).upper() == "WARN" or str(LOG_LEVEL) == "1" or str(LOG_LEVEL).upper() == "INFO" or str(
             LOG_LEVEL) == "0":
         os.system("echo -e \"{time} - \033[33m{message}\033[0m\""
-                  .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())), message=out))
+                  .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())), message=out))
         # print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
         #       "\033[33m" + str(out) + "\033[0m")
 
 
 def error(out):
     os.system("echo -e \"{time} - \033[31m{message}\033[0m\""
-              .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())), message=out))
+              .format(time=str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())), message=out))
     # print(str(time.strftime("%Y-%m-%d %H:%M:%S - ", time.localtime())) +
     #       "\033[31m" + str(out) + "\033[0m")
 
@@ -172,7 +172,6 @@ def create_redis_cluster(pods):
     hosts = ""
     cmd = "redis-cli -h {ip} -p $REDIS_PORT ping | grep -i \"PONG\""
     if len(pods) > 0:
-        print(len(pods))
         for v in pods:
             ping_res = os.system(cmd.format(ip=v["ip"]))
             while ping_res != 0 :
@@ -219,7 +218,7 @@ def get_cluster_endpoint_info():
 
 
 def fix_cluster_config_file():
-    info("Start fixing old cluster config file...")
+    info("Start fixing old Cluster config file...")
     if os.path.exists(NODES_CONFIG_FILE):
         with io.open(NODES_CONFIG_FILE, 'r', encoding='utf-8') as config_stream:
             content = config_stream.read()
@@ -375,6 +374,7 @@ def cluster_launcher():
         write_file("1", EXIST_FLAG_FILE)
     else:
         fix_cluster_config_file()
+        save_ip_podname_relation()
         info("Start redis server ....")
         result = os.system(
             "redis-server /home/redis/data/redis.conf ")
@@ -390,7 +390,7 @@ def cluster_launcher():
 def ctrl_launcher():
     if not checking_cluster():
         info("Could not find the Redis Cluster,start creating it.")
-        info("Loading redis cluster statefulset's info...")
+        info("Loading Redis Cluster statefulset's info...")
         while not cluster_statefulset_exists():
             time.sleep(5)
             info("tick tock........")
@@ -398,7 +398,7 @@ def ctrl_launcher():
             create_redis_cluster(
                 get_redis_cluster_ready_pods(return_int=False))
         else:
-            error("Wait Timeout! Please check the redis cluster node pod!")
+            error("Wait Timeout! Please check the Redis Cluster node pod!")
             time.sleep(10)
             exit(1)
     old_redis_cluster_nodes = 0
