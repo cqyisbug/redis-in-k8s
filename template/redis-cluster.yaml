@@ -73,7 +73,7 @@ spec:
         volumeMounts:
   {% if persistent_flag %}
         - name: redisdata
-          mountPath: /data/redis
+          mountPath: /home/redis
   {% endif %}
         securityContext:
           capabilities: {}
