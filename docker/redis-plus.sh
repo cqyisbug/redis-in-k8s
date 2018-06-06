@@ -411,7 +411,7 @@ function cluster_launcher(){
 
     log_info "Start Redis cluster server..."
     if test -f "/home/redis_config/redis.conf" ; then
-        cp /home/redis_config/redis.conf ${DATA_DIC}redis.conf
+        mv /home/redis_config/redis.conf ${DATA_DIC}redis.conf
     else
         log_error "Could not find file : /home/redis_config/redis.conf"
     fi
@@ -423,22 +423,30 @@ function cluster_launcher(){
     redis-server ${DATA_DIC}redis.conf --protected-mode no
 
     # 如果已经有集群存在了就加入进去,没有集群,就不加入
-    if test $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l)  -gt 1; then
+    if [[ $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l) -gt 1 ]] && [[ ! -f ${DATA_DIC}cluster-old.ip ]] ; then
         redis-cli -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
         #如果集群内存在没有从节点的主节点,就成为其从节点
         masters=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep master | awk '{print $1}')
-        choosen=""
-        for master in $masters ; do 
-            redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
-            if test $? != "0"; then
-                break 
+        for master in $masters ; do
+            if test ${#master} != "0" ; then
+                redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
+                if test $? != "0"; then
+                    # 延时一段随机时间,再进行判断是否符合从节点要求 0~30 之间
+                    random_sleep=$(awk 'BEGIN{srand();printf "%d\n",rand()*20}' | tr "0." " ")
+                    sleep $random_sleep
+                    redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
+                    if test $? != "0"; then
+                        redis-cli -p ${REDIS_PORT} cluster replicate ${master}
+                        break 
+                    fi
+                fi
             fi
         done
-        if test ${#master} != "0" ; then
-            sleep 5
-            log_info "Wait 10s , then replicate ${master}"
-            redis-cli -p ${REDIS_PORT} cluster replicate ${master}
-        fi
+        # if test ${#master} != "0" ; then
+        #     sleep 5
+        #     log_info "Wait 10s , then replicate ${master}"
+        #     redis-cli -p ${REDIS_PORT} cluster replicate ${master}
+        # fi
     fi 
 
     log_launcher
