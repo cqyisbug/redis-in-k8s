@@ -68,17 +68,17 @@ EXPOSE 26379
 
 COPY redis.conf /home/redis_config/redis.conf
 RUN touch /home/redis_config/sentinel.conf
-COPY entrypoint.sh /entrypoint.sh
+COPY redis-plus.sh /redis-plus.sh
 COPY redis-4.0.1.gem /redis.gem
 COPY rdoc-6.0.0.gem /rdoc.gem
 COPY redis-trib.rb /redis-trib.rb
 COPY logo.txt  /logo.txt
 
 
-RUN chmod +x /entrypoint.sh ;\
+RUN chmod +x /redis-plus.sh ;\
 	chmod +x /redis-trib.rb ;\
 	cp /redis-trib.rb /usr/bin/redis-trib.rb ;\
 	chmod +x /usr/bin/redis-trib.rb
 
-CMD [ "/entrypoint.sh" ]
+CMD [ "/redis-plus.sh" ]
 ENTRYPOINT [ "bash", "-c" ]

@@ -27,9 +27,7 @@
 
 ############################################   GLOBAL VARIABLES   ############################################
 DATA_DIC="home/redis/data/"
-EXIST_FLAG_FILE="${data_dic}existflag"
 NODES_CONFIG_FILE="${data_dic}nodes.conf"
-IP_PODNAME_RELATION_JSON="${data_dic}relation.json"
 CLUSTER_STATEFULSET_NAME="redis-cluster-node"
 CLUSTER_SERVICE_NAME="redis-cluster-svc"
 CLUSTER_NAMESPACE="default"
@@ -42,8 +40,6 @@ CLUSTER_NAMESPACE="default"
 # REDIS_CLUSTER_REPLICAS
 # REDIS_STATEFULSET_REPLICAS
 # API_SERVER_ADDR
-# WAIT_TIMEOUT
-# REBALANCE_DELAY
 # LOG_LEVEL
 # REDIS_PORT
 # MY_POD_IP
@@ -58,10 +54,6 @@ CLUSTER_NAMESPACE="default"
 
 if test ! $LOG_LEVEL ; then
     LOG_LEVEL=0
-fi
-
-if test ! $SHOW_HEALTH_DETAIL ; then
-    SHOW_HEALTH_DETAIL=false
 fi
 
 function echo_debug(){
@@ -157,7 +149,7 @@ function wait_all_pod_ready(){
         replicas=$(get_replicas $1)   
 
         echo_debug ">>> IP_ARRAY_LENGTH : $ready_ip_length"
-        echo_debug ">>> REDIS_CLUSTER_REPLICAS : $replicas"
+        echo_debug ">>> REDIS_STATEFULSET_REPLICAS : $replicas"
 
         if test $ready_ip_length == $replicas ; then
             log_info "[OK] Pod Ready!!!"
@@ -171,10 +163,10 @@ function wait_all_pod_ready(){
 # 保存ip和pod名字的对应关系
 function save_relation(){
     file=$1
-    REDIS_CLUSTER_REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
+    REDIS_STATEFULSET_REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
     rm -f ${DATA_DIC}cluster-$file.ip
     index=0
-    while test $index -lt $REDIS_CLUSTER_REPLICAS ; do
+    while test $index -lt $REDIS_STATEFULSET_REPLICAS ; do
         curl -s ${API_SERVER_ADDR}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods/${CLUSTER_STATEFULSET_NAME}-$index | jq ".status.podIP"  >> ${DATA_DIC}cluster-$file.ip 
         let index++
     done
@@ -493,21 +485,21 @@ function cluster_ctrl_launcher(){
         
         log_info ">>> Performing Cluster Config Check"
 
-        REDIS_CLUSTER_REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
+        REDIS_STATEFULSET_REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
         NODES=$(get_nodes)
         HOST_NETWORK=$(use_hostnetwork "${CLUSTER_STATEFULSET_NAME}")
 
-        log_info ">>> REDIS_CLUSTER_REPLICAS: $REDIS_CLUSTER_REPLICAS"
+        log_info ">>> REDIS_STATEFULSET_REPLICAS: $REDIS_STATEFULSET_REPLICAS"
         log_info ">>> NODES: $NODES"
         log_info ">>> HOST_NETWORK: $HOST_NETWORK"
 
         let CLUSER_POD_QUANTUM=REDIS_CLUSTER_REPLICAS*3+3
-        if test $REDIS_CLUSTER_REPLICAS -lt $CLUSER_POD_QUANTUM ; then
+        if test $REDIS_STATEFULSET_REPLICAS -lt $CLUSER_POD_QUANTUM ; then
         #  这个情况下是因为组成不了集群,所以直接报错退出
             log_error " We Need More Pods "
             log_error "* pods >= (cluster_replicas + 1) * 3"
             exit 1
-        elif [[ $REDIS_CLUSTER_REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
+        elif [[ $REDIS_STATEFULSET_REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
             log_error "We Need More Nodes"
             exit 1
         else
@@ -531,7 +523,7 @@ function cluster_ctrl_launcher(){
             let index++
         done
 
-        if test $index -eq $REDIS_CLUSTER_REPLICAS ; then
+        if test $index -eq $REDIS_STATEFULSET_REPLICAS ; then
             NODES_IN_REDIS_CLUSTER=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l)
             if test $NODES_IN_REDIS_CLUSTER == "1" ; then
 

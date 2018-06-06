@@ -1,29 +1,27 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: dep-redis-ctrl
+  name: redis-ctrl-center
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        name: dep-redis-ctrl
+        name: redis-ctrl-center
         app: redis
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-      - name: cntr-redis-cc
+      - name: redis-ctrl-center
         image: {{ redis_docker_image }}
         imagePullPolicy: IfNotPresent
         env:
-        - name: CLUSTER_CTRL
-          value: "true"
-        - name: REDIS_CLUSTER_SLAVE_QUANTUM
-          value: "{{ pre_master_replicas }}"
+        - name: MODE
+          value: "cluster_ctrl"
+        - name: REDIS_CLUSTER_REPLICAS
+          value: "{{ redis_cluster_replicas }}"
         - name: LOG_LEVEL
           value: "{{ log_level }}"
-        - name: SHOW_HEALTH_DETAIL
-          value: "true"
         - name: API_SERVER_ADDR
           value: "{{ api_server_addr }}"
         - name: REDIS_PORT
@@ -38,32 +36,34 @@ spec:
 apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
-  name: sts-redis-cluster
+  name: redis-cluster-node
 spec:
-  serviceName: "svc-redis-cluster"
+  serviceName: "redis-cluster-svc"
   replicas: {{ redis_replicas }}
   template:
     metadata:
       labels:
-        name: sts-redis-cluster
+        name: redis-cluster-node
         app: redis
     spec:
       hostNetwork: {{ hostnetwork }}
       dnsPolicy: ClusterFirstWithHostNet
       terminationGracePeriodSeconds: 10
       containers:
-      - name: cntr-redis-cluster
+      - name: redis-cluster-node
         image: {{ redis_docker_image }}
         imagePullPolicy: IfNotPresent
         env:
-        - name: CLUSTER
-          value: "true"
-        - name: REDIS_PORT
-          value: "{{ redis_server_port }}"
-        - name: API_SERVER_ADDR
-          value: "{{ api_server_addr }}"
+        - name: MODE
+          value: "cluster"
+        - name: REDIS_CLUSTER_REPLICAS
+          value: "{{ redis_cluster_replicas }}"
         - name: LOG_LEVEL
           value: "{{ log_level }}"
+        - name: API_SERVER_ADDR
+          value: "{{ api_server_addr }}"
+        - name: REDIS_PORT
+          value: "{{ redis_server_port }}"
         - name: MY_POD_IP
           valueFrom:
             fieldRef:
@@ -72,7 +72,7 @@ spec:
         - containerPort: {{ redis_server_port }}
         volumeMounts:
   {% if persistent_flag %}
-        - name: rediscluster
+        - name: redisdata
           mountPath: /data/redis
   {% endif %}
         securityContext:
@@ -81,7 +81,7 @@ spec:
   {% if persistent_flag %}
   volumeClaimTemplates:
   - metadata:
-      name: rediscluster
+      name: redisdata
       annotations:
         volume.beta.kubernetes.io/storage-class: "fast"
     spec:
@@ -94,9 +94,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: svc-redis-cluster
+  name: redis-cluster-svc
   labels:
-    name: svc-redis-cluster
+    name: redis-cluster-svc
     app: redis
 spec:
   ports:
@@ -109,9 +109,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: svc-redis-cluster-np
+  name: redis-cluster-svc-np
   labels:
-    name: svc-redis-cluster-np
+    name: redis-cluster-svc-np
     app: redis
 spec:
   ports:
