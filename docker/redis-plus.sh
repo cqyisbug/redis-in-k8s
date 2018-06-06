@@ -430,7 +430,7 @@ function cluster_launcher(){
         choosen=""
         for master in $masters ; do 
             redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
-            if test $? != "0": then
+            if test $? != "0"; then
                 break 
             fi
         done

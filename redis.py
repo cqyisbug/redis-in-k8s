@@ -115,9 +115,9 @@ def exists_resource(resource, pattern, namespace="default", bool_result=True):
 
 def check_config(config):
     try:
-        # redis_replicas >= (pre_master_replicas+1)*3
-        if int(config["redis_replicas"]) < (int(config["pre_master_replicas"])+1)*3 or int(config["redis_replicas"]) < 0 or int(config["pre_master_replicas"]) < 0:
-            print("make sure redis_replicas >= (pre_master_replicas+1)*3 > 0")
+        # redis_replicas >= (redis_cluster_replicas+1)*3
+        if int(config["redis_replicas"]) < (int(config["redis_cluster_replicas"])+1)*3 or int(config["redis_replicas"]) < 0 or int(config["redis_cluster_replicas"]) < 0:
+            print("make sure redis_replicas >= (redis_cluster_replicas+1)*3 > 0")
             return False
 
         # 0<= log_level <= 3
@@ -267,7 +267,7 @@ def check_redis(return_code=False):
 +------+---------------------------------------+
     """
     try:
-        run = subprocess.Popen("/root/local/bin/kubectl exec -it $(kubectl get po | grep dep-redis-ctrl | awk '{print $1}')  /bin/sh /code/redis/entrypoint.sh health 2>/dev/null",
+        run = subprocess.Popen("/root/local/bin/kubectl exec -it $(kubectl get po | grep dep-redis-ctrl | awk '{print $1}')  /bin/sh /code/redis/redis-plus.sh health 2>/dev/null",
                                shell=True,
                                stdout=subprocess.PIPE)
         result = run.stdout.read()
