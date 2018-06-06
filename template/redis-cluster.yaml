@@ -104,7 +104,7 @@ spec:
     targetPort: {{ redis_server_port }}
   clusterIP: None
   selector:
-    name: sts-redis-cluster
+    name: redis-cluster-node
 ---
 apiVersion: v1
 kind: Service
