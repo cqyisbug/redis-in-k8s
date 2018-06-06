@@ -435,6 +435,8 @@ function cluster_launcher(){
             fi
         done
         if test ${#master} != "0" ; then
+            sleep 5
+            log_info "Wait 10s , then replicate ${master}"
             redis-cli -p ${REDIS_PORT} cluster replicate ${master}
         fi
     fi 

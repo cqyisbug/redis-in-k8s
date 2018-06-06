@@ -120,4 +120,4 @@ spec:
     nodePort: {{ redis_server_nodeport }}
   type: NodePort
   selector:
-    name: sts-redis-cluster
+    name: redis-cluster-node 
