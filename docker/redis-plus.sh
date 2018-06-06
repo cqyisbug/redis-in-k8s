@@ -434,9 +434,8 @@ function cluster_launcher(){
                 break 
             fi
         done
-
         if test ${#master} != "0" ; then
-            redis-cli -h ${REDIS_PORT} cluster replicate ${master}
+            redis-cli -p ${REDIS_PORT} cluster replicate ${master}
         fi
     fi 
 
