@@ -66,9 +66,7 @@ EXPOSE 6379
 EXPOSE 6380
 EXPOSE 26379
 
-COPY redis-master.conf /home/redis_config/master.conf
-COPY redis-slave.conf /home/redis_config/slave.conf
-COPY redis-cluster.conf /home/redis_config/cluster.conf
+COPY redis.conf /home/redis_config/redis.conf
 RUN touch /home/redis_config/sentinel.conf
 COPY entrypoint.sh /entrypoint.sh
 COPY redis-4.0.1.gem /redis.gem
