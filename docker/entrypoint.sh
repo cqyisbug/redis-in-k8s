@@ -231,13 +231,13 @@ function master_launcher(){
     if test -f "/home/redis_config/slave.conf" ; then
         cp /home/redis_config/slave.conf ${DATA_DIC}slave.conf
     else
-        log_error "can not find file -> /home/redis_config/slave.conf"
+        log_error "Could not find file : /home/redis_config/slave.conf"
     fi
 
     if test -f "/home/redis_config/redis.conf" ; then
         cp /home/redis_config/redis.conf ${DATA_DIC}redis.conf
     else
-        log_error "can not find file -> /home/redis_config/redis.conf"
+        log_error "Could not find file : /home/redis_config/redis.conf"
     fi
 
     # 循环10次
@@ -283,19 +283,15 @@ function master_launcher(){
 # 哨兵模式 slave节点启动流程代码
 function slave_launcher(){
 
-    echo_info "+--------------------------------------------------------------------+"
-    echo_info "|                                                                    |"
-    echo_info "|\t\t\tMaster Host  : $MASTER_HOST     "
-    echo_info "|\t\t\tMaster Port  : $MASTER_PORT     "
-    echo_info "|\t\t\tSentinel HOST: $SENTINEL_HOST   "
-    echo_info "|\t\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "|                                                                    |"
-    echo_info "+--------------------------------------------------------------------+"
+    log_info ">>> Master Host  : $MASTER_HOST "
+    log_info ">>> Master Port  : $MASTER_PORT "
+    log_info ">>> Sentinel HOST: $SENTINEL_HOST  "
+    log_info ">>> Sentinel Port: $SENTINEL_PORT "
 
     if test -f "/home/redis_config/slave.conf" ; then
         cp /home/redis_config/slave.conf ${DATA_DIC}slave.conf
     else
-        log_error "can not find file -> /home/redis_config/slave.conf"
+        log_error "Could not find file : /home/redis_config/slave.conf"
     fi
 
 
@@ -401,7 +397,6 @@ function sentinel_launcher(){
 # 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
 
-
     # 等待并保存ip和pod的关系
     wait_all_pod_ready $CLUSTER_STATEFULSET_NAME $CLUSTER_SERVICE_NAME
     save_relation "new"
@@ -431,7 +426,7 @@ function cluster_launcher(){
     if test -f "/home/redis_config/redis.conf" ; then
         cp /home/redis_config/redis.conf ${DATA_DIC}redis.conf
     else
-        log_error "Could not find file -> /home/redis_config/redis.conf"
+        log_error "Could not find file : /home/redis_config/redis.conf"
     fi
 
     sed -i "s/{port}/${REDIS_PORT}/g" ${DATA_DIC}redis.conf
@@ -439,23 +434,38 @@ function cluster_launcher(){
     sed -i "s/{cluster_enable}/yes/g" ${DATA_DIC}redis.conf
 
     redis-server ${DATA_DIC}redis.conf --protected-mode no
-    
+
+    # 如果已经有集群存在了就加入进去,没有集群,就不加入
+    if test $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l)  -gt 1; then
+        redis-server -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
+        #如果集群内存在没有从节点的主节点,就成为其从节点
+        masters=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep master | awk '{print $1}')
+        choosen=""
+        for master in $masters ; do 
+            redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
+            if test $? != "0": then
+                break 
+            fi
+        done
+
+        if test ${#master} != "0" ; then
+            redis-cli -h ${REDIS_PORT} cluster replicate ${master}
+        fi
+    fi 
+
     log_launcher
 
     while true ; do 
-        CLUSTER_CHECK_RESULT=$(ruby /redis-trib.rb check --health ${MY_POD_IP}:$REDIS_PORT | jq ".code")
-        RESULT_LENGTH=$(echo $CLUSTER_CHECK_RESULT | wc -L)
-        if test $RESULT_LENGTH != "1" ; then
-            sleep 10
-            continue
-        fi
+        CLUSTER_CHECK_RESULT=$(ruby /redis-trib.rb check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
 
         log_debug ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         if test $CLUSTER_CHECK_RESULT == "0" ; then 
             log_debug ">>> Back up nodes.conf"
             save_relation "old"
+        else
+            log_error "Redis Cluster is not healthy!"
         fi
-        sleep 10
+        sleep 5
     done
 }
 
@@ -469,12 +479,8 @@ function cluster_launcher(){
 # 集群模式 集群配置节点启动流程代码
 function cluster_ctrl_launcher(){
 
-    echo_info "+--------------------------------------------------------------------+"
-    echo_info "|                                                                    |"
-    echo_info "|\t\t\tAPI_SERVER_ADDR   : $API_SERVER_ADDR   "
-    echo_info "|\t\t\tREDIS_CLUSTER_SLAVE_QUANTUM  : $REDIS_CLUSTER_SLAVE_QUANTUM    "
-    echo_info "|                                                                    |"
-    echo_info "+--------------------------------------------------------------------+"
+    log_info ">>> API_SERVER_ADDR   : $API_SERVER_ADDR   "
+    log_info ">>> REDIS_CLUSTER_SLAVE_QUANTUM   : $REDIS_CLUSTER_SLAVE_QUANTUM  "
 
     while true ; do
         Listener=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/${CLUSTER_STATEFULSET_NAME} | jq ".code")
@@ -494,15 +500,11 @@ function cluster_ctrl_launcher(){
 
         REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
         NODES=$(get_nodes)
-        HOST_NETWORK=$(use_hostnetwork "${CLUSTER_STATEFULSET_NAME}") 
+        HOST_NETWORK=$(use_hostnetwork "${CLUSTER_STATEFULSET_NAME}")
 
-        echo_info "+--------------------------------------------------------------------+"
-        echo_info "|                                                                    |"
-        echo_info "|\t\t\tREPLICAS: $REPLICAS"
-        echo_info "|\t\t\tNODES: $NODES"
-        echo_info "|\t\t\tHOST_NETWORK: $HOST_NETWORK"
-        echo_info "|                                                                    |"
-        echo_info "+--------------------------------------------------------------------+"
+        log_info ">>> REPLICAS: $REPLICAS"
+        log_info ">>> NODES: $NODES"
+        log_info ">>> HOST_NETWORK: $HOST_NETWORK"
 
         let CLUSER_POD_QUANTUM=REDIS_CLUSTER_SLAVE_QUANTUM*3+3
         if test $REPLICAS -lt $CLUSER_POD_QUANTUM ; then
@@ -514,13 +516,12 @@ function cluster_ctrl_launcher(){
             log_error "We Need More Nodes,please reset the \"replicas\" in  ${CLUSTER_STATEFULSET_NAME}.yaml and recreate the StatefulSet or addd nodes "
             exit 1
         else
-            log_info "[OK] Cluster Config OK..."
+            log_info "[OK] Cluster Config OK!"
         fi
 
         log_info ">>> Performing Redis Cluster Pod Check..."
 
         IP_ARRAY=$(nslookup ${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' |awk '{print $3}')
-        # log_info "Ready Pod IP : $IP_ARRAY"
         CLUSTER_CONFIG=""
         index=0
         for ip in $IP_ARRAY ;
@@ -531,7 +532,6 @@ function cluster_ctrl_launcher(){
                 break
             fi
             CLUSTER_CONFIG=${ip}":${REDIS_PORT} "${CLUSTER_CONFIG}
-            # log_info "Cluster config : $CLUSTER_CONFIG"
             CLUSTER_NODE=${ip}
             let index++
         done
@@ -539,7 +539,7 @@ function cluster_ctrl_launcher(){
         log_info "index : $index "
         if test $index -eq $REPLICAS ; then
             log_info ">>> Performing Check Recovery..."
-            RECOVERD=$(ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT | jq ".code")
+            RECOVERD=$(ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:${REDIS_PORT} | jq ".code")
             RESULT_LENGTH=$(echo $RECOVERD | wc -L)
             if test $RESULT_LENGTH != "1" ; then
                 continue
@@ -559,7 +559,7 @@ function cluster_ctrl_launcher(){
             log_info "[OK] Congratulations,Redis Cluster Completed!"
             break
         else
-            log_info "Waiting for all pod to be ready! Sleep 5 secs..."
+            log_info "Waiting for all pod to be ready ! Sleep 5 secs..."
             sleep 10
             continue
         fi
@@ -572,80 +572,15 @@ function cluster_ctrl_launcher(){
         NODES=$(get_nodes)
         HOST_NETWORK=$(use_hostnetwork "${CLUSTER_STATEFULSET_NAME}") 
         
-        log_info "Current Pod Replicas : $NEW_REPLICAS"
-        log_info "Current Nodes Quantum : $NODES"
+        log_info ">>> Current Pod Replicas : $NEW_REPLICAS"
+        log_info ">>> Current Nodes Quantum : $NODES"
 
-        #  这里还要判断 NEW_REPLICAS NODES 和 REPLICAS 的关系
-        #  如果采用了hostnetwork 的话,pod的数量不能大于 nodes的数量,所以 NEW_REPLICAS > NODES => NEW_REPLICAS=NODES
 
         if test $NEW_REPLICAS -gt $NODES ; then
             if test $HOST_NETWORK == "true" ; then
                 log_warn " When you use host network,make sure that the number of pod is less than node"
                 NEW_REPLICAS=$NODES
             fi
-        fi
-
-        if test $NEW_REPLICAS -ge $REPLICAS ;then
-            if test $NEW_REPLICAS -eq $REPLICAS ;then
-                log_info ">>> Performing Check Redis Cluster..."
-                if test $SHOW_HEALTH_DETAIL == "true" ; then
-                    ruby /redis-trib.rb check $CLUSTER_NODE:$REDIS_PORT
-                else 
-                    ruby /redis-trib.rb check --health $CLUSTER_NODE:$REDIS_PORT
-                fi
-                sleep 180
-            else
-                log_info ">>> Performing Add Node To The Redis Cluster"
-                while true ; do
-                    NEW_IP_ARRAY=$(nslookup ${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' |awk '{print $3}')
-                    log_info "Ready Pod IP : $NEW_IP_ARRAY"
-                    new_index=0
-                    for ip in $NEW_IP_ARRAY ;
-                    do
-                        redis-cli -h ${ip} -p ${REDIS_PORT} INFO 1>/dev/null 2>&1
-                        if test "$?" != "0" ; then
-                            log_error " Connected to $ip failed "
-                            break
-                        fi
-                        # CLUSTER_NODE=${ip}
-                        let new_index++
-                    done
-
-                    log_info "index : $new_index "
-
-                    if test $new_index -ge $NEW_REPLICAS ; then
-                        log_info ">>> Performing Add New Node To The Existed Redis Cluster..."
-
-                        for ip_a in $NEW_IP_ARRAY ; do
-                            EXISTS=0
-                            for ip_b in $IP_ARRAY ; do 
-                                if test $ip_a == $ip_b ; then
-                                    EXISTS=1
-                                    break
-                                fi
-                            done
-                            
-                            if  test $EXISTS -eq 0 ; then 
-                                # 这里的auto就是之前改的redis-trib.rb,新增进去的子命令,用于自动迁移slot
-                                # ruby /redis-trib.rb add-node --auto $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
-                                # 集群扩容暂时有问题,先默认添加的节点为slave
-                                ruby /redis-trib.rb add-node --slave $ip_a:$REDIS_PORT  $CLUSTER_NODE:$REDIS_PORT
-                            fi
-                        done
-
-                        REPLICAS=$NEW_REPLICAS
-
-                        log_info "[OK] Congratulations,Redis Cluster Completed!"
-                        break
-                    else
-                        log_info "Waiting for all pod to be ready! sleep 5 secs..."
-                        sleep 5
-                        continue
-                    fi
-                done
-            fi
-        else
-            log_error "Sorry,We do not support the delete node operation"
         fi
     done
 }
