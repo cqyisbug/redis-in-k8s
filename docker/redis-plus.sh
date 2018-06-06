@@ -426,13 +426,16 @@ function cluster_launcher(){
     if [[ $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l) -gt 1 ]] && [[ ! -f ${DATA_DIC}cluster-old.ip ]] ; then
         redis-cli -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
         #如果集群内存在没有从节点的主节点,就成为其从节点
+        #随机延时一段时间0 ~ 20
+        random_sleep=$(awk 'BEGIN{srand();printf "%d\n",rand()*20}' | tr "0." " ")
+        sleep $random_sleep
         masters=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep master | awk '{print $1}')
         for master in $masters ; do
             if test ${#master} != "0" ; then
                 redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
                 if test $? != "0"; then
-                    # 延时一段随机时间,再进行判断是否符合从节点要求 0~30 之间
-                    random_sleep=$(awk 'BEGIN{srand();printf "%d\n",rand()*20}' | tr "0." " ")
+                    # 延时一段随机时间,再进行判断是否符合从节点要求 0~10 之间
+                    random_sleep=$(awk 'BEGIN{srand();printf "%d\n",rand()*10}' | tr "0." " ")
                     sleep $random_sleep
                     redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
                     if test $? != "0"; then
