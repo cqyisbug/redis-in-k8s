@@ -23,6 +23,37 @@
 #
 #==================================================================================================================
 
+
+
+############################################   GLOBAL VARIABLES   ############################################
+DATA_DIC="home/redis/data/"
+EXIST_FLAG_FILE="${data_dic}existflag"
+NODES_CONFIG_FILE="${data_dic}nodes.conf"
+IP_PODNAME_RELATION_JSON="${data_dic}relation.json"
+CLUSTER_STATEFULSET_NAME="redis-cluster-node"
+CLUSTER_SERVICE_NAME="redis-cluster-svc"
+CLUSTER_NAMESPACE="default"
+############################################################################################################### 
+
+
+
+
+############################################     ENVIRONMENT      #############################################
+# REDIS_CLUSTER_REPLICAS
+# REDIS_STATEFULSET_REPLICAS
+# API_SERVER_ADDR
+# WAIT_TIMEOUT
+# REBALANCE_DELAY
+# LOG_LEVEL
+# REDIS_PORT
+# MY_POD_IP
+###############################################################################################################                  
+
+
+
+
+##############################################   LOG FUNC   ###################################################
+
 # 日志等级定义, 0:debug 1:info 2:warn 3:error
 
 if test ! $LOG_LEVEL ; then
@@ -84,8 +115,11 @@ function log_error(){
         echo -e "\033[31m$time  - [ERROR] $1\033[0m"
     fi 
 }
+###############################################################################################################
 
 
+
+########################################     APIS     #########################################################
 function ip_array_length(){
     ips=$(nslookup $1 2>/dev/null | grep 'Address' |awk '{print $3}')
     index=0
@@ -177,8 +211,12 @@ function log_launcher(){
 EOF
     crond 
 }
+###############################################################################################################
 
 
+
+
+#############################################  MASTER  ########################################################
 # 哨兵模式 master节点启动流程代码
 function master_launcher(){
 
@@ -238,6 +276,10 @@ function master_launcher(){
     done
 }
 
+###############################################################################################################
+
+
+##############################################  SLAVE   #######################################################
 # 哨兵模式 slave节点启动流程代码
 function slave_launcher(){
 
@@ -290,7 +332,10 @@ function slave_launcher(){
 
     redis-server  /data/redis/slave.conf --protected-mode no
 }
+###############################################################################################################
 
+
+#############################################  SENTINEL  #####################################################
 # 哨兵模式 哨兵节点启动流程代码
 function sentinel_launcher(){
 
@@ -349,11 +394,16 @@ function sentinel_launcher(){
 
     redis-sentinel ${sentinel_conf} --protected-mode no
 }
+###############################################################################################################
 
+
+##############################################  CLUSTER  ######################################################
 # 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
+
+
     # 等待并保存ip和pod的关系
-    wait_all_pod_ready "sts-redis-cluster" "svc-redis-cluster"
+    wait_all_pod_ready $CLUSTER_STATEFULSET_NAME $CLUSTER_SERVICE_NAME
     save_relation "new"
 
     # 如果有旧的关系文件,那么就对nodes.conf进行替换
@@ -374,15 +424,15 @@ function cluster_launcher(){
                 let index++
             done
         else
-            log_error "[ERROR] something wrong with presistent"
+            log_error "[ERROR] Something wrong with presistent"
         fi
     fi
 
-    log_info "Starting cluster ..."
+    log_info "Start Redis cluster server..."
     if test -f "/config/redis/cluster.conf" ; then
         cp /config/redis/cluster.conf /data/redis/cluster.conf
     else
-        log_error "can not find file -> /config/redis/cluster.conf"
+        log_error "Could not find file -> /config/redis/cluster.conf"
     fi
 
     {
@@ -420,6 +470,13 @@ function cluster_launcher(){
     done
 }
 
+
+###############################################################################################################
+
+
+
+
+############################################### CLUSTER CTRL CENTER  ##########################################
 # 集群模式 集群配置节点启动流程代码
 function cluster_ctrl_launcher(){
 
@@ -605,6 +662,10 @@ function cluster_ctrl_launcher(){
 }
 
 
+###############################################################################################################
+
+
+############################################  CLUSTER CTRL EXTEND  ############################################
 if test $# -ne 0 ; then
     case $1 in
         "health")
@@ -618,51 +679,32 @@ if test $# -ne 0 ; then
     exit 0
 fi
 
+###############################################################################################################
+
+
+
+
 time=$(date "+%Y-%m-%d")
 
-if [[ $MASTER == "true" ]] || [[ $SLAVE == "true" ]] || [[ $SENTINEL == "true" ]]; then
-    sed -i "s/{mode}/sentinel/g" /code/redis/logo.txt
-fi
-
-if [[ $CLUSTER == "true" ]] ||  [[ $CLUSTER_CTRL == "true" ]]; then
-    sed -i "s/{mode}/cluster/g" /code/redis/logo.txt
-fi
-
-sed -i "s/{redis_version}/${REDIS_VERSION}/g" /code/redis/logo.txt
-sed -i "s/{port}/${REDIS_PORT}/g" /code/redis/logo.txt
-sed -i "s/{date}/${time}/g" /code/redis/logo.txt
-
-cat /code/redis/logo.txt
+#############################################  LOGO  ########################################################
+sed -i "s/{mode}/${MODE}/g" /logo.txt
+sed -i "s/{redis_version}/${REDIS_VERSION}/g" /logo.txt
+sed -i "s/{port}/${REDIS_PORT}/g" /logo.txt
+sed -i "s/{date}/${time}/g" /logo.txt
+cat /logo.txt
+#############################################################################################################
 
 # 安装 redis-trib.rb 的依赖
-gem install --local /rdoc-600.gem 2>/dev/null 1>&2
-gem install --local /redis-401.gem 2>/dev/null 1>&2
-rm -f /rdoc-600.gem
-rm -f /redis-401.gem
+gem install --local /rdoc.gem 2>/dev/null 1>&2
+gem install --local /redis.gem 2>/dev/null 1>&2
+rm -f /rdoc.gem
+rm -f /redis.gem
 
-mkdir -p /data/redis
+mkdir -p  /home/redis/data
+mkdir -p  /home/redis/log
 
-if [[ $MASTER == "true" ]] ; then
-    master_launcher
-    exit 0
-fi
-
-if [[ $SLAVE == "true" ]] ; then
-    slave_launcher
-    exit 0
-fi
-
-if [[ $SENTINEL == "true" ]] ; then
-    sentinel_launcher
-    exit 0
-fi
-
-if [[ $CLUSTER == "true" ]] ; then
-    cluster_launcher
-    exit 0
-fi
-
-if [[ $CLUSTER_CTRL == "true" ]] ; then
-    cluster_ctrl_launcher
-    exit 0
+"$(echo ${MODE}_launcher | tr 'A-Z' 'a-z')"
+if test $? == "127":then
+    echo_error "MODE must be Cluster_Ctrl | Cluster | Master | Sentinel | Slave  !"
+    exit 1
 fi

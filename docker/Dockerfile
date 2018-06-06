@@ -43,9 +43,12 @@ RUN set -ex; \
 	make -C /usr/src/redis -j "$(nproc)"; \
 	make -C /usr/src/redis install; \
 	\
-	mkdir -p /code/redis ;\
+	mkdir -p /home/redis/data ;\
+	mkdir -p /home/redis/log ;\
 	\
-#	mv /usr/src/redis/src/redis-trib.rb /code/redis/redis-trib.rb ;\
+	mkdir -p /home/redis_config ;\
+	\
+#	mv /usr/src/redis/src/redis-trib.rb /redis-trib.rb ;\
 	\
 	rm -r /usr/src/redis; \
 	\
@@ -63,21 +66,21 @@ EXPOSE 6379
 EXPOSE 6380
 EXPOSE 26379
 
-COPY redis-master.conf /config/redis/master.conf
-COPY redis-slave.conf /config/redis/slave.conf
-COPY redis-cluster.conf /config/redis/cluster.conf
-RUN touch /config/redis/sentinel.conf
-COPY entrypoint.sh /code/redis/entrypoint.sh
-COPY redis-4.0.1.gem /redis-401.gem
-COPY rdoc-6.0.0.gem /rdoc-600.gem
-COPY redis-trib.rb /code/redis/redis-trib.rb
-COPY logo.txt  /code/redis/logo.txt
+COPY redis-master.conf /home/redis_config/master.conf
+COPY redis-slave.conf /home/redis_config/slave.conf
+COPY redis-cluster.conf /home/redis_config/cluster.conf
+RUN touch /home/redis_config/sentinel.conf
+COPY entrypoint.sh /entrypoint.sh
+COPY redis-4.0.1.gem /redis.gem
+COPY rdoc-6.0.0.gem /rdoc.gem
+COPY redis-trib.rb /redis-trib.rb
+COPY logo.txt  /logo.txt
 
 
-RUN chmod +x /code/redis/entrypoint.sh ;\
-	chmod +x /code/redis/redis-trib.rb ;\
-	cp /code/redis/redis-trib.rb /usr/bin/redis-trib.rb ;\
+RUN chmod +x /entrypoint.sh ;\
+	chmod +x /redis-trib.rb ;\
+	cp /redis-trib.rb /usr/bin/redis-trib.rb ;\
 	chmod +x /usr/bin/redis-trib.rb
 
-CMD [ "/code/redis/entrypoint.sh" ]
+CMD [ "/entrypoint.sh" ]
 ENTRYPOINT [ "bash", "-c" ]
