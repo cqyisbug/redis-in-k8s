@@ -156,9 +156,8 @@ function wait_all_pod_ready(){
         ready_ip_length=$(ip_array_length $2) 
         replicas=$(get_replicas $1)   
 
-        echo_debug "-------------------- [debug] --------------------"
-        echo_debug "IP_ARRAY_LENGTH  :   $ready_ip_length"
-        echo_debug "REPLICAS         :   $replicas"
+        echo_debug ">>> IP_ARRAY_LENGTH : $ready_ip_length"
+        echo_debug ">>> REDIS_CLUSTER_REPLICAS : $replicas"
 
         if test $ready_ip_length == $replicas ; then
             log_info "[OK] Pod Ready!!!"
@@ -172,10 +171,10 @@ function wait_all_pod_ready(){
 # 保存ip和pod名字的对应关系
 function save_relation(){
     file=$1
-    REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
+    REDIS_CLUSTER_REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
     rm -f ${DATA_DIC}cluster-$file.ip
     index=0
-    while test $index -lt $REPLICAS ; do
+    while test $index -lt $REDIS_CLUSTER_REPLICAS ; do
         curl -s ${API_SERVER_ADDR}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods/${CLUSTER_STATEFULSET_NAME}-$index | jq ".status.podIP"  >> ${DATA_DIC}cluster-$file.ip 
         let index++
     done
@@ -222,7 +221,7 @@ function master_launcher(){
 
     echo_info "+--------------------------------------------------------------------+"
     echo_info "|                                                                    |"
-    echo_info "|\t\t\tMaster Port  : $MASTER_PORT     "
+    echo_info "|\t\t\tMaster Port : $MASTER_PORT     "
     echo_info "|\t\t\tSentinel HOST: $SENTINEL_HOST   "
     echo_info "|\t\t\tSentinel Port: $SENTINEL_PORT   "
     echo_info "|                                                                    |"
@@ -283,8 +282,8 @@ function master_launcher(){
 # 哨兵模式 slave节点启动流程代码
 function slave_launcher(){
 
-    log_info ">>> Master Host  : $MASTER_HOST "
-    log_info ">>> Master Port  : $MASTER_PORT "
+    log_info ">>> Master Host : $MASTER_HOST "
+    log_info ">>> Master Port : $MASTER_PORT "
     log_info ">>> Sentinel HOST: $SENTINEL_HOST  "
     log_info ">>> Sentinel Port: $SENTINEL_PORT "
 
@@ -335,14 +334,10 @@ function slave_launcher(){
 # 哨兵模式 哨兵节点启动流程代码
 function sentinel_launcher(){
 
-    echo_info "+--------------------------------------------------------------------+"
-    echo_info "|                                                                    |"
-    echo_info "|\t\t\tMaster Host  : $MASTER_HOST     "
-    echo_info "|\t\t\tMaster Port  : $MASTER_PORT     "
-    echo_info "|\t\t\tSentinel SVC : $SENTINEL_SVC    "
-    echo_info "|\t\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "|                                                                    |"
-    echo_info "+--------------------------------------------------------------------+"
+    log_info ">>> Master Host : $MASTER_HOST     "
+    log_info ">>> Master Port : $MASTER_PORT     "
+    log_info ">>> Sentinel SVC : $SENTINEL_SVC    "
+    log_info ">>> Sentinel Port: $SENTINEL_PORT   "
 
     MASTER_IP=""
     while true; do
@@ -479,8 +474,8 @@ function cluster_launcher(){
 # 集群模式 集群配置节点启动流程代码
 function cluster_ctrl_launcher(){
 
-    log_info ">>> API_SERVER_ADDR   : $API_SERVER_ADDR   "
-    log_info ">>> REDIS_CLUSTER_SLAVE_QUANTUM   : $REDIS_CLUSTER_SLAVE_QUANTUM  "
+    log_info ">>> API_SERVER_ADDR : $API_SERVER_ADDR   "
+    log_info ">>> REDIS_CLUSTER_REPLICAS : $REDIS_CLUSTER_REPLICAS  "
 
     while true ; do
         Listener=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/${CLUSTER_STATEFULSET_NAME} | jq ".code")
@@ -498,22 +493,22 @@ function cluster_ctrl_launcher(){
         
         log_info ">>> Performing Cluster Config Check"
 
-        REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
+        REDIS_CLUSTER_REPLICAS=$(get_replicas "${CLUSTER_STATEFULSET_NAME}")
         NODES=$(get_nodes)
         HOST_NETWORK=$(use_hostnetwork "${CLUSTER_STATEFULSET_NAME}")
 
-        log_info ">>> REPLICAS: $REPLICAS"
+        log_info ">>> REDIS_CLUSTER_REPLICAS: $REDIS_CLUSTER_REPLICAS"
         log_info ">>> NODES: $NODES"
         log_info ">>> HOST_NETWORK: $HOST_NETWORK"
 
-        let CLUSER_POD_QUANTUM=REDIS_CLUSTER_SLAVE_QUANTUM*3+3
-        if test $REPLICAS -lt $CLUSER_POD_QUANTUM ; then
+        let CLUSER_POD_QUANTUM=REDIS_CLUSTER_REPLICAS*3+3
+        if test $REDIS_CLUSTER_REPLICAS -lt $CLUSER_POD_QUANTUM ; then
         #  这个情况下是因为组成不了集群,所以直接报错退出
-            log_error " We Need More Pods, please reset the \"replicas\" in  ${CLUSTER_STATEFULSET_NAME}.yaml and recreate the StatefulSet"
-            log_error "[IMPORTANT]   =>   pod_replicas >= (slave_replicas + 1) * 3"
+            log_error " We Need More Pods "
+            log_error "* pods >= (cluster_replicas + 1) * 3"
             exit 1
-        elif [[ $REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
-            log_error "We Need More Nodes,please reset the \"replicas\" in  ${CLUSTER_STATEFULSET_NAME}.yaml and recreate the StatefulSet or addd nodes "
+        elif [[ $REDIS_CLUSTER_REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
+            log_error "We Need More Nodes"
             exit 1
         else
             log_info "[OK] Cluster Config OK!"
@@ -526,9 +521,9 @@ function cluster_ctrl_launcher(){
         index=0
         for ip in $IP_ARRAY ;
         do
-            redis-cli -h ${ip} -p ${REDIS_PORT} INFO 1>/dev/null 2>&1
+            redis-cli -h ${ip} -p ${REDIS_PORT} info 1>/dev/null 2>&1
             if test "$?" != "0" ; then
-                log_debug " Connected to $ip failed ,execute break"
+                log_debug "Could not connected to $ip , connection refused! "
                 break
             fi
             CLUSTER_CONFIG=${ip}":${REDIS_PORT} "${CLUSTER_CONFIG}
@@ -536,30 +531,20 @@ function cluster_ctrl_launcher(){
             let index++
         done
 
-        log_info "index : $index "
-        if test $index -eq $REPLICAS ; then
-            log_info ">>> Performing Check Recovery..."
-            RECOVERD=$(ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:${REDIS_PORT} | jq ".code")
-            RESULT_LENGTH=$(echo $RECOVERD | wc -L)
-            if test $RESULT_LENGTH != "1" ; then
-                continue
-            else
-                if test $RECOVERD == "0" ; then 
-                    log_info ">>> Recover from the destruction"
-                    break 
-                fi
-            fi
+        if test $index -eq $REDIS_CLUSTER_REPLICAS ; then
+            NODES_IN_REDIS_CLUSTER=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l)
+            if test $NODES_IN_REDIS_CLUSTER == "1" ; then
 
-            log_info ">>> Performing Build Redis Cluster..."
-            if test $REDIS_CLUSTER_SLAVE_QUANTUM -eq 0 ;then
-                yes yes | head -1 | ruby /redis-trib.rb create  $CLUSTER_CONFIG
-            else
-                yes yes | head -1 | ruby /redis-trib.rb create --replicas $REDIS_CLUSTER_SLAVE_QUANTUM $CLUSTER_CONFIG
+                log_info ">>> Performing Build Redis Cluster..."
+                if test $REDIS_CLUSTER_REPLICAS -eq 0 ;then
+                    yes yes | head -1 | ruby /redis-trib.rb create  $CLUSTER_CONFIG
+                else
+                    yes yes | head -1 | ruby /redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS $CLUSTER_CONFIG
+                fi
+                log_info "[OK] Congratulations,Redis Cluster Completed!"
             fi
-            log_info "[OK] Congratulations,Redis Cluster Completed!"
-            break
         else
-            log_info "Waiting for all pod to be ready ! Sleep 5 secs..."
+            log_info "Waiting POD ... "
             sleep 10
             continue
         fi
@@ -601,21 +586,25 @@ if test $# -ne 0 ; then
             ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
             ;;
         "rebalance")
-            ruby /redis-trib.rb rebalance
+            ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
             ;;
         "-r")
-            ruby /redis-trib.rb rebalance
+            ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
             ;;
         *)
-            log_error "wrong arguments!"
+            echo "redis-plus helper~"
+            echo "usage: sh redis-plus.sh [command]"
+            echo "[command]:"
+            echo "  health : get redis cluster health info"
+            echo "  -h"
+            echo "  rebalance : rebalance redis cluster slots"
+            echo "  -r"
         ;;
     esac
     exit 0
 fi
 
 ###############################################################################################################
-
-
 
 
 time=$(date "+%Y-%m-%d")
