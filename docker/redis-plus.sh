@@ -97,14 +97,14 @@ function log_info(){
 function log_warn(){
     if test $LOG_LEVEL -le 2 ; then
         time=$(date "+%Y-%m-%d %H:%M:%S")
-        echo -e "\033[33m$time  - [WARNNING] $1\033[0m"
+        echo -e "\033[33m$time  - [WARN] $1\033[0m"
     fi 
 }
 
 function log_error(){
     if test $LOG_LEVEL -le 3 ; then
         time=$(date "+%Y-%m-%d %H:%M:%S")
-        echo -e "\033[31m$time  - [ERROR] $1\033[0m"
+        echo -e "\033[31m$time  - [ERR] $1\033[0m"
     fi 
 }
 ###############################################################################################################
@@ -152,7 +152,7 @@ function wait_all_pod_ready(){
         echo_debug ">>> REDIS_STATEFULSET_REPLICAS : $replicas"
 
         if test $ready_ip_length == $replicas ; then
-            log_info "[OK] Pod Ready!!!"
+            log_info "[OK] All pods are ready !"
             break
         else
             sleep 10
@@ -424,7 +424,7 @@ function cluster_launcher(){
 
     # 如果已经有集群存在了就加入进去,没有集群,就不加入
     if test $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l)  -gt 1; then
-        redis-server -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
+        redis-cli -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
         #如果集群内存在没有从节点的主节点,就成为其从节点
         masters=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep master | awk '{print $1}')
         choosen=""
