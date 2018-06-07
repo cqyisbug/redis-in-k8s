@@ -385,18 +385,30 @@ function sentinel_launcher(){
 function cluster_launcher(){
 
     # 等待并保存ip和pod的关系
-    wait_all_pod_ready $CLUSTER_STATEFULSET_NAME $CLUSTER_SERVICE_NAME
+    if test -f ${DATA_DIC}cluster-old.ip ; then
+        wait_all_pod_ready $CLUSTER_STATEFULSET_NAME $CLUSTER_SERVICE_NAME
+    fi
     save_relation "new"
 
     # 如果有旧的关系文件,那么就对nodes.conf进行替换
     if test -f ${DATA_DIC}cluster-old.ip ; then
         if test -f "${DATA_DIC}nodes.conf" ; then 
             index=0
+            echo_error "========old====="
+            cat ${DATA_DIC}cluster-old.ip
+            echo_error "========new====="
+            cat ${DATA_DIC}cluster-new.ip
+            echo_error "========old====="
+            cat ${DATA_DIC}nodes.conf
+           
             cat ${DATA_DIC}cluster-old.ip | while read oldip 
             do
                 sed -i "s/${oldip}/pod${index}/g" ${DATA_DIC}nodes.conf
                 let index++
             done
+
+            echo_error "========mid====="
+            cat ${DATA_DIC}nodes.conf
 
             index=0
             cat ${DATA_DIC}cluster-new.ip | while read newip 
@@ -404,6 +416,9 @@ function cluster_launcher(){
                 sed -i "s/pod${index}/${newip}/g" ${DATA_DIC}nodes.conf
                 let index++
             done
+
+             echo_error "========new====="
+            cat ${DATA_DIC}nodes.conf
         else
             log_error "[ERROR] Something wrong with presistent"
         fi
@@ -419,40 +434,18 @@ function cluster_launcher(){
     sed -i "s/{port}/${REDIS_PORT}/g" ${DATA_DIC}redis.conf
     sed -i "s/{pod_ip}/${MY_POD_IP}/g" ${DATA_DIC}redis.conf
     sed -i "s/{cluster_enable}/yes/g" ${DATA_DIC}redis.conf
+    sed -i "s/{appendonly}/yes/g" ${DATA_DIC}redis.conf
 
     redis-server ${DATA_DIC}redis.conf --protected-mode no
 
     # 如果已经有集群存在了就加入进去,没有集群,就不加入
-    if [[ $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l) -gt 1 ]] && [[ ! -f ${DATA_DIC}cluster-old.ip ]] ; then
-        redis-cli -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
-        #如果集群内存在没有从节点的主节点,就成为其从节点
-        #随机延时一段时间0 ~ 20
-        random_sleep=$(awk 'BEGIN{srand();printf "%d\n",rand()*20}' | tr "0." " ")
-        sleep $random_sleep
-        masters=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep master | awk '{print $1}')
-        for master in $masters ; do
-            if test ${#master} != "0" ; then
-                redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
-                if test $? != "0"; then
-                    # 延时一段随机时间,再进行判断是否符合从节点要求 0~10 之间
-                    random_sleep=$(awk 'BEGIN{srand();printf "%d\n",rand()*10}' | tr "0." " ")
-                    sleep $random_sleep
-                    redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master}
-                    if test $? != "0"; then
-                        redis-cli -p ${REDIS_PORT} cluster replicate ${master}
-                        break 
-                    fi
-                fi
-            fi
-        done
-        # if test ${#master} != "0" ; then
-        #     sleep 5
-        #     log_info "Wait 10s , then replicate ${master}"
-        #     redis-cli -p ${REDIS_PORT} cluster replicate ${master}
-        # fi
-    fi 
+    # if [[ $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l) -gt 1 ]] && [[ ! -f ${DATA_DIC}cluster-old.ip ]] ; then
+    #     redis-cli -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
+    # fi 
 
     log_launcher
+
+    sleep 5
 
     while true ; do 
         CLUSTER_CHECK_RESULT=$(ruby /redis-trib.rb check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
@@ -494,6 +487,16 @@ function cluster_ctrl_launcher(){
     done
 
     while true; do
+        while true ; do 
+            if test $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} ping 2>/dev/null | tr "a-z" "A-Z") == "PONG" ; then
+                if test $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l )  == "1" ; then
+                    break
+                else
+                    break 2
+                fi
+            fi
+            sleep 2            
+        done
         
         log_info ">>> Performing Cluster Config Check"
 
@@ -507,13 +510,15 @@ function cluster_ctrl_launcher(){
 
         let CLUSER_POD_QUANTUM=REDIS_CLUSTER_REPLICAS*3+3
         if test $REDIS_STATEFULSET_REPLICAS -lt $CLUSER_POD_QUANTUM ; then
-        #  这个情况下是因为组成不了集群,所以直接报错退出
+            #这个情况下是因为组成不了集群,所以直接报错退出
             log_error " We Need More Pods "
             log_error "* pods >= (cluster_replicas + 1) * 3"
-            exit 1
+            sleep 5 
+            continue
         elif [[ $REDIS_STATEFULSET_REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]]; then
             log_error "We Need More Nodes"
-            exit 1
+            sleep 5
+            continue
         else
             log_info "[OK] Cluster Config OK!"
         fi
@@ -546,6 +551,7 @@ function cluster_ctrl_launcher(){
                     yes yes | head -1 | ruby /redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS $CLUSTER_CONFIG
                 fi
                 log_info "[OK] Congratulations,Redis Cluster Completed!"
+                break
             fi
         else
             log_info "Waiting POD ... "
@@ -554,6 +560,8 @@ function cluster_ctrl_launcher(){
         fi
     done
 
+
+    sleep 10
     while true ; do
         log_info ">>> Performing Check Redis Cluster Pod Replicas"
         
@@ -565,12 +573,51 @@ function cluster_ctrl_launcher(){
         log_info ">>> Current Nodes Quantum : $NODES"
 
 
-        if test $NEW_REPLICAS -gt $NODES ; then
-            if test $HOST_NETWORK == "true" ; then
-                log_warn " When you use host network,make sure that the number of pod is less than node"
-                NEW_REPLICAS=$NODES
-            fi
+        if [[ $NEW_REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]] ; then
+            log_warn " When you use host network,make sure that the number of pod is less than node"
+            sleep 10
+            continue
         fi
+
+        # 遍历ip列表,如果节点是独立的主节点,并且没有slot,就成为从节点
+        POD_IPS=$(nslookup $1 2>/dev/null | grep 'Address' |awk '{print $3}')
+        index=0
+        for ip in $POD_IPS ;
+        do
+            count=$(redis-cli -h $ip -p ${REDIS_PORT} cluster nodes 2>/dev/null | wc -l)
+            if test $count == "1" ; then 
+                redis-cli -h $ip -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
+                #如果集群内存在没有从节点的主节点,就成为其从节点
+                masters=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep master | awk '{print $1}')
+                tmp=""
+                for master in $masters ; do
+                    if test ${#master} != "0" ; then
+                        slave_count=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master} | wc -l)
+                        # if test $slave_count -lt $REDIS_CLUSTER_REPLICAS; then
+                        #     sleep 1
+                        #     redis-cli -p ${REDIS_PORT} cluster replicate ${master}
+                        # fi
+                        if test $slave_count -lt $REDIS_CLUSTER_REPLICAS; then
+                            tmp=${slave_count}"#"${master}" "
+                        fi
+                    fi
+                done
+                nodeid_with_least_slave=$(echo $tmp | tr " " "\n" | sort | head -1 | tr "#" " " | awk '{print $2}')  
+                log_error "==================================="
+                log_error $nodeid_with_least_slave            
+                redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes 
+                log_error "==================================="
+                if test ${#nodeid_with_least_slave} != "0" ; then
+                    sleep 1
+                    redis-cli -h ${ip} -p ${REDIS_PORT} cluster replicate ${nodeid_with_least_slave}
+                fi
+
+            fi
+        done   
+
+        # check redis cluster and rebalance corn
+        redis-trib.rb check  ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME}:${REDIS_PORT}
+        sleep 10
     done
 }
 
