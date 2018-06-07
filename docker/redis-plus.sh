@@ -446,16 +446,20 @@ function cluster_launcher(){
     log_launcher
 
     sleep 5
-
+    OLD_IP_LENGTH=$(ip_array_length) 
     while true ; do 
         CLUSTER_CHECK_RESULT=$(ruby /redis-trib.rb check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
-
         log_debug ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
-        if test $CLUSTER_CHECK_RESULT == "0" ; then 
-            log_debug ">>> Back up nodes.conf"
-            save_relation "old"
-        else
-            log_error "Redis Cluster is not healthy!"
+        NEW_IP_LENGTH=$(ip_array_length)  
+        if test $NEW_IP_LENGTH -ge $OLD_IP_LENGTH ; then
+        # 如果发现集群的replicas变少了,就不保存ip信息了,不允许缩容 
+            OLD_IP_LENGTH=$NEW_IP_LENGTH
+            if test $CLUSTER_CHECK_RESULT == "0" ; then 
+                log_debug ">>> Back up nodes.conf"
+                save_relation "old"
+            else
+                log_error "Redis Cluster is not healthy!"
+            fi
         fi
         sleep 5
     done
