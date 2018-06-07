@@ -593,20 +593,16 @@ function cluster_ctrl_launcher(){
                 for master in $masters ; do
                     if test ${#master} != "0" ; then
                         slave_count=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep -v master | grep ${master} | wc -l)
-                        # if test $slave_count -lt $REDIS_CLUSTER_REPLICAS; then
-                        #     sleep 1
-                        #     redis-cli -p ${REDIS_PORT} cluster replicate ${master}
-                        # fi
-                        if test $slave_count -lt $REDIS_CLUSTER_REPLICAS; then
-                            tmp=${slave_count}"#"${master}" "
+                        REDIS_CLUSTER_REPLICAS_TMP=$REDIS_CLUSTER_REPLICAS
+                        if test $REDIS_CLUSTER_REPLICAS  == "0" ; then
+                            REDIS_CLUSTER_REPLICAS_TMP=1
+                        fi
+                        if test $slave_count -lt $REDIS_CLUSTER_REPLICAS_TMP; then
+                            tmp="${slave_count}#${master}@${tmp}"
                         fi
                     fi
                 done
-                nodeid_with_least_slave=$(echo $tmp | tr " " "\n" | sort | head -1 | tr "#" " " | awk '{print $2}')  
-                log_error "==================================="
-                log_error $nodeid_with_least_slave            
-                redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes 
-                log_error "==================================="
+                nodeid_with_least_slave=$(echo $tmp | tr "@" "\n" | sort | head -1 | tr "#" " " | awk '{print $2}')  
                 if test ${#nodeid_with_least_slave} != "0" ; then
                     sleep 1
                     redis-cli -h ${ip} -p ${REDIS_PORT} cluster replicate ${nodeid_with_least_slave}
