@@ -477,8 +477,8 @@ function cluster_ctrl_launcher(){
     while true ; do
         Listener=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/${CLUSTER_STATEFULSET_NAME} | jq ".code")
         if [[ $Listener == "404" ]] ; then
-            echo_info ">>> Api server address: ${API_SERVER_ADDR}"
-            echo_info ">>> Waiting until the statefulset created: ${CLUSTER_STATEFULSET_NAME}"
+            log_info ">>> Api server address: ${API_SERVER_ADDR}"
+            log_info ">>> Waiting until the statefulset created: ${CLUSTER_STATEFULSET_NAME}"
             sleep 10
             continue
         else
@@ -580,7 +580,7 @@ function cluster_ctrl_launcher(){
         fi
 
         # 遍历ip列表,如果节点是独立的主节点,并且没有slot,就成为从节点
-        POD_IPS=$(nslookup $1 2>/dev/null | grep 'Address' |awk '{print $3}')
+        POD_IPS=$(nslookup ${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' |awk '{print $3}')
         index=0
         for ip in $POD_IPS ;
         do
