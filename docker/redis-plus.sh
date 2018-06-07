@@ -438,7 +438,7 @@ function cluster_launcher(){
 
     redis-server ${DATA_DIC}redis.conf --protected-mode no
 
-    # 如果已经有集群存在了就加入进去,没有集群,就不加入
+    # 如果已经有集群存在了就加入进去,没有集群,就不加入,这部分代码移动到了控制中心
     # if [[ $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l) -gt 1 ]] && [[ ! -f ${DATA_DIC}cluster-old.ip ]] ; then
     #     redis-cli -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
     # fi 
@@ -598,11 +598,11 @@ function cluster_ctrl_launcher(){
                             REDIS_CLUSTER_REPLICAS_TMP=1
                         fi
                         if test $slave_count -lt $REDIS_CLUSTER_REPLICAS_TMP; then
-                            tmp="${slave_count}#${master}@${tmp}"
+                            tmp="${slave_count}#${master} ${tmp}"
                         fi
                     fi
                 done
-                nodeid_with_least_slave=$(echo $tmp | tr "@" "\n" | sort | head -1 | tr "#" " " | awk '{print $2}')  
+                nodeid_with_least_slave=$(echo $tmp | tr " " "\n" | sort | head -1 | tr "#" " " | awk '{print $2}')  
                 if test ${#nodeid_with_least_slave} != "0" ; then
                     sleep 1
                     redis-cli -h ${ip} -p ${REDIS_PORT} cluster replicate ${nodeid_with_least_slave}
