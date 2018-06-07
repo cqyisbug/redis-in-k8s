@@ -607,7 +607,6 @@ function cluster_ctrl_launcher(){
                     sleep 1
                     redis-cli -h ${ip} -p ${REDIS_PORT} cluster replicate ${nodeid_with_least_slave}
                 fi
-
             fi
         done   
 

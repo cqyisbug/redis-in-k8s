@@ -1,6 +1,6 @@
 {
   "api_server_addr": "",
-  "redis_replicas": "3",
+  "redis_statefulset_replicas": "3",
   "redis_server_port": 6380,
   "redis_server_nodeport": 6379,
   "redis_docker_image": "",

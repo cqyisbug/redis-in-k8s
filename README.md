@@ -32,7 +32,7 @@ pip install jinja2
 ```
 {
   "api_server_addr":"172.27.25.35:8080",   apiserver的地址
-  "redis_replicas": "3",                   sts-redis-cluster 的pod数量，也就是你redis的节点数，最小是3
+  "redis_statefulset_replicas": "3",                   sts-redis-cluster 的pod数量，也就是你redis的节点数，最小是3
   "redis_server_port": 6380,               redis服务占用的端口
   "redis_server_nodeport":6379,            nodeport的redis端口，和redis_server_port尽量不一样，一样的话你可以试试，你会吃亏的，这里不细讲了
   "redis_docker_image": "redis:local",     第一步你打完镜像的名字
@@ -40,7 +40,7 @@ pip install jinja2
   "redis_data_size": 2,                    持久化存储卷的大小，单位Gi
   "log_level":0,                           0:debug 1:info 2:warn 3:error
   "hostnetwork":false,                     是否使用宿主机网络,也表示pod的ip和宿主机一样,这样就限制了,每个node上只能跑一个redis 的 pod,如果有在kubernetes外访问集群的需求,推荐使用这个选项,也可以自己做网络,自己做网络代价比价大
-  "pre_master_replicas":0                  这个参数和redis_replicas有关，表示redis集群中每个主节点的从节点数量，和redis_replicas 满足关系式  redis_replicas >= (pre_master_replicas + 1)*3
+  "pre_master_replicas":0                  这个参数和redis_statefulset_replicas有关，表示redis集群中每个主节点的从节点数量，和redis_statefulset_replicas 满足关系式  redis_statefulset_replicas >= (pre_master_replicas + 1)*3
 }
 
 ```

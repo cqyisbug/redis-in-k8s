@@ -39,7 +39,7 @@ metadata:
   name: redis-cluster-node
 spec:
   serviceName: "redis-cluster-svc"
-  replicas: {{ redis_replicas }}
+  replicas: {{ redis_statefulset_replicas }}
   template:
     metadata:
       labels:

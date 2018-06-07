@@ -115,9 +115,9 @@ def exists_resource(resource, pattern, namespace="default", bool_result=True):
 
 def check_config(config):
     try:
-        # redis_replicas >= (redis_cluster_replicas+1)*3
-        if int(config["redis_replicas"]) < (int(config["redis_cluster_replicas"])+1)*3 or int(config["redis_replicas"]) < 0 or int(config["redis_cluster_replicas"]) < 0:
-            print("make sure redis_replicas >= (redis_cluster_replicas+1)*3 > 0")
+        # redis_statefulset_replicas >= (redis_cluster_replicas+1)*3
+        if int(config["redis_statefulset_replicas"]) < (int(config["redis_cluster_replicas"])+1)*3 or int(config["redis_statefulset_replicas"]) < 0 or int(config["redis_cluster_replicas"]) < 0:
+            print("make sure redis_statefulset_replicas >= (redis_cluster_replicas+1)*3 > 0")
             return False
 
         # 0<= log_level <= 3
@@ -127,8 +127,8 @@ def check_config(config):
 
         # hostnetowrk
         if str(config["hostnetwork"]).lower == "true":
-            if exists_resource("node","Ready",bool_result=False) < int(config["redis_replicas"]) :
-                print("in hostnetowrk mode,make sure nodes >= redis_replicas")
+            if exists_resource("node","Ready",bool_result=False) < int(config["redis_statefulset_replicas"]) :
+                print("in hostnetowrk mode,make sure nodes >= redis_statefulset_replicas")
                 return False
 
         # redis_data_size > 0 
@@ -229,7 +229,7 @@ def scale_redis(new_replicas):
 
         # execute scale
         config = json_load("redis.json")
-        old_replicas = int(config["redis_replicas"])
+        old_replicas = int(config["redis_statefulset_replicas"])
 
         if old_replicas > new_replicas:
             print("could not delete pods of redis!")
@@ -243,7 +243,7 @@ def scale_redis(new_replicas):
             result = os.system(
                 "/root/local/bin/kubectl scale statefulset sts-redis-cluster --replicas={}".format(new_replicas))
             if result == 0:
-                config["redis_replicas"] = str(new_replicas)
+                config["redis_statefulset_replicas"] = str(new_replicas)
                 write_file(json.dumps(config, indent=1),
                            os.path.join(current_path, "redis.json"))
                 return True
