@@ -197,7 +197,7 @@ def uninstall_redis():
             "/root/local/bin/kubectl get pvc -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete pvc")
         if result == 0:
             while True:
-                if exists_resource("endpoints", "redis-data"):
+                if exists_resource("endpoints", "redisdata"):
                     time.sleep(2)
                 else:
                     break
