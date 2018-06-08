@@ -31,16 +31,25 @@ pip install jinja2
 - 3. 修改redis.json
 ```
 {
-  "api_server_addr":"172.27.25.35:8080",   apiserver的地址
-  "redis_statefulset_replicas": "3",                   sts-redis-cluster 的pod数量，也就是你redis的节点数，最小是3
-  "redis_server_port": 6380,               redis服务占用的端口
-  "redis_server_nodeport":6379,            nodeport的redis端口，和redis_server_port尽量不一样，一样的话你可以试试，你会吃亏的，这里不细讲了
-  "redis_docker_image": "redis:local",     第一步你打完镜像的名字
-  "persistent_flag": false,                是否开启持久化
-  "redis_data_size": 2,                    持久化存储卷的大小，单位Gi
-  "log_level":0,                           0:debug 1:info 2:warn 3:error
-  "hostnetwork":false,                     是否使用宿主机网络,也表示pod的ip和宿主机一样,这样就限制了,每个node上只能跑一个redis 的 pod,如果有在kubernetes外访问集群的需求,推荐使用这个选项,也可以自己做网络,自己做网络代价比价大
-  "redis_cluster_replicas":0                  这个参数和redis_statefulset_replicas有关，表示redis集群中每个主节点的从节点数量，和redis_statefulset_replicas 满足关系式  redis_statefulset_replicas >= (redis_cluster_replicas + 1)*3
+  "api_server_addr_comment":"此处不要填,系统会调用接口自动填",
+  "api_server_addr": "",
+  "redis_statefulset_replicas_comment":"Redis服务个数,调用kubectl get pod 后看到的redis-cluster-node 类型的pod的数量",
+  "redis_statefulset_replicas": "3",
+  "redis_cluster_replicas_comment":"Redis集群中每个主节点的从节点数量",
+  "redis_cluster_replicas": 0,
+  "redis_server_port_comment":"Redis Pod中Redis服务所用的端口号",
+  "redis_server_port": 6380,
+  "redis_server_nodeport_comment":"NodeIp+NodePort 访问Redis服务,不要和redis_server_port 一样",
+  "redis_server_nodeport": 6379,
+  "redis_docker_image": "填你的打完镜像后的名字",
+  "persistent_flag_comment":"是否开启持久化",
+  "persistent_flag": false,
+  "redis_data_size_comment":"如果开启持久化了之后,给每个Pod所分配的持久化空间大小,单位为Gi",
+  "redis_data_size": 2,
+  "log_level_comment":"Pod日志输出级别,非Redis日志级别 0:debug 1:info 2:warn 3:error ,请填 0 或者 1 或者 2 或者 3 ",
+  "log_level": 0,
+  "hostnetwork_comment":"是否启用宿主机网络,如果启用宿主机网络,那么每个kubernetes Node上就只能启动一个Redis的服务Pod",
+  "hostnetwork": false
 }
 
 ```
