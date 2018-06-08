@@ -616,6 +616,18 @@ function cluster_ctrl_launcher(){
 
         # check redis cluster and rebalance corn
         redis-trib.rb check  ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME}:${REDIS_PORT}
+        
+        #如果发现一个master上没有slot 就开始执行rebalance
+        POD_IPS=$(nslookup ${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' |awk '{print $3}')
+        for ip in $POD_IPS ; do
+            nodeid=$(redis-cli -h $ip -p ${REDIS_PORT} cluster nodes | grep myself | awk '{print $1}')
+            redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster slots | grep $nodeid
+            if test $? != "0" ; then
+                 ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+            fi
+        done
+
+
         sleep 10
     done
 }
