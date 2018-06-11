@@ -26,8 +26,8 @@
 
 
 ############################################   GLOBAL VARIABLES   ############################################
-DATA_DIC="home/redis/data/"
-LOG_DIC="home/redis/log/"
+DATA_DIC="/home/redis/data/"
+LOG_DIC="/home/redis/log/"
 NODES_CONFIG_FILE="${data_dic}nodes.conf"
 CLUSTER_STATEFULSET_NAME="redis-cluster-node"
 CLUSTER_SERVICE_NAME="redis-cluster-svc"
