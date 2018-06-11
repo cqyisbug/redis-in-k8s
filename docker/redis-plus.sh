@@ -27,6 +27,7 @@
 
 ############################################   GLOBAL VARIABLES   ############################################
 DATA_DIC="home/redis/data/"
+LOG_DIC="home/redis/log/"
 NODES_CONFIG_FILE="${data_dic}nodes.conf"
 CLUSTER_STATEFULSET_NAME="redis-cluster-node"
 CLUSTER_SERVICE_NAME="redis-cluster-svc"
@@ -180,17 +181,9 @@ function log_launcher(){
     } >> /etc/crontabs/root
 
     touch /var/log/messages
+	
 
-    cat >> /etc/logrotate.conf <<EOF
-${DATA_DIC}redis.log {
-    daily
-    su root root
-    rotate 7
-    create
-    nocompress
-}
-
-# ${DATA_DIC}redis.log {
+# ${LOG_DIC}redis.log {
 #     daily
 #     su root root
 #     rotate 7
@@ -199,6 +192,14 @@ ${DATA_DIC}redis.log {
 #     size 10MB
 # }
 
+    cat >> /etc/logrotate.conf <<EOF
+${LOG_DIC}redis.log {
+    daily
+    su root root
+    rotate 7
+    create
+    nocompress
+}
 EOF
     crond 
 }
@@ -417,7 +418,7 @@ function cluster_launcher(){
                 let index++
             done
 
-             echo_error "========new====="
+            echo_error "========new====="
             cat ${DATA_DIC}nodes.conf
         else
             log_error "[ERROR] Something wrong with presistent"
