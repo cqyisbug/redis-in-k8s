@@ -639,50 +639,50 @@ function cluster_ctrl_launcher(){
 ############################################  CLUSTER CTRL EXTEND  ############################################
 if test $# -ne 0 ; then
 
-# case $1 in
-#     "health")
-#         # --health 命令不是原生的,对 redis-trib.rb 做过修改
-#         ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
-#         ;;
-#     "-h")
-#         # --health 命令不是原生的,对 redis-trib.rb 做过修改
-#         ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
-#         ;;
-#     "rebalance")
-#         ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
-#         ;;
-#     "-r")
-#         ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
-#         ;;
-#     *)
-#         echo "redis-plus helper~"
-#         echo "usage: sh redis-plus.sh [command]"
-#         echo "[command]:"
-#         echo "  health : get redis cluster health info"
-#         echo "  -h"
-#         echo "  rebalance : rebalance redis cluster slots"
-#         echo "  -r"
-#     ;;
-# esac
-# exit 0
-
-    if test $1 == "health" ; then
-        ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
-        exit 0 
-    fi
-
-    if test $1 == "rebalance" ; then
-        ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
-        exit 0 
-    fi
-
-    echo "redis-plus helper~"
-    echo "usage: sh redis-plus.sh [command]"
-    echo "[command]:"
-    echo "  health : get redis cluster health info"
-    echo "  rebalance : rebalance redis cluster slots"
-
+    case $1 in
+        "health")
+            # --health 命令不是原生的,对 redis-trib.rb 做过修改
+            ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
+            ;;
+        "-h")
+            # --health 命令不是原生的,对 redis-trib.rb 做过修改
+            ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
+            ;;
+        "rebalance")
+            ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+            ;;
+        "-r")
+            ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+            ;;
+        *)
+            echo "redis-plus helper~"
+            echo "usage: sh redis-plus.sh [command]"
+            echo "[command]:"
+            echo "  health : get redis cluster health info"
+            echo "  -h"
+            echo "  rebalance : rebalance redis cluster slots"
+            echo "  -r"
+        ;;
+    esac
     exit 0
+
+    # if test $1 == "health" ; then
+    #     ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
+    #     exit 0 
+    # fi
+
+    # if test $1 == "rebalance" ; then
+    #     ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+    #     exit 0 
+    # fi
+
+    # echo "redis-plus helper~"
+    # echo "usage: sh redis-plus.sh [command]"
+    # echo "[command]:"
+    # echo "  health : get redis cluster health info"
+    # echo "  rebalance : rebalance redis cluster slots"
+
+    # exit 0
 fi
 
 ###############################################################################################################
