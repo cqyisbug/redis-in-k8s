@@ -126,7 +126,7 @@ def check_config(config):
             return False
 
         # hostnetowrk
-        if str(config["hostnetwork"]).lower == "true":
+        if str(config["hostnetwork"]).lower() == "true":
             if exists_resource("node","Ready",bool_result=False) < int(config["redis_statefulset_replicas"]) :
                 print("in hostnetowrk mode,make sure nodes >= redis_statefulset_replicas")
                 return False
