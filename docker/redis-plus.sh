@@ -212,13 +212,9 @@ EOF
 # 哨兵模式 master节点启动流程代码
 function master_launcher(){
 
-    echo_info "+--------------------------------------------------------------------+"
-    echo_info "|                                                                    |"
-    echo_info "|\t\t\tMaster Port : $MASTER_PORT     "
-    echo_info "|\t\t\tSentinel HOST: $SENTINEL_HOST   "
-    echo_info "|\t\t\tSentinel Port: $SENTINEL_PORT   "
-    echo_info "|                                                                    |"
-    echo_info "+--------------------------------------------------------------------+"
+    log_info ">>> Master Port : $MASTER_PORT     "
+    log_info ">>> Sentinel HOST: $SENTINEL_HOST   "
+    log_info ">>> Sentinel Port: $SENTINEL_PORT   "
 
     if test -f "/home/redis_config/slave.conf" ; then
         cp /home/redis_config/slave.conf ${DATA_DIC}slave.conf
