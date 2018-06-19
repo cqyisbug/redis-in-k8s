@@ -457,8 +457,8 @@ function cluster_launcher(){
             else
                 log_error "Redis Cluster is not healthy!"
 				sleep 2
-                CLUSTER_CHECK_RESULT=$(ruby /redis-trib.rb check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
-                if test $CLUSTER_CHECK_RESULT != "0" ; then
+                PING=$(redis-cli -p ${REDIS_PORT} ping)
+                if test $? != "0" ; then
                     exit 1
                 fi
             fi

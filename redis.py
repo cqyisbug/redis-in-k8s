@@ -267,7 +267,7 @@ def check_redis(return_code=False):
 +------+---------------------------------------+
     """
     try:
-        run = subprocess.Popen("/root/local/bin/kubectl exec -it $(kubectl get po | grep redis-ctrl-center | awk '{print $1}')  /bin/sh /redis-plus.sh health 2>/dev/null",
+        run = subprocess.Popen("/root/local/bin/kubectl exec -it $(/root/local/bin/kubectl get po | grep redis-ctrl-center | awk '{print $1}')  /bin/sh /redis-plus.sh health 2>/dev/null",
                                shell=True,
                                stdout=subprocess.PIPE)
         result = run.stdout.read()
