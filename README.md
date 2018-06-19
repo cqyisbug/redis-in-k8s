@@ -36,7 +36,7 @@ pip install jinja2
 - 3. 修改redis.json
 ```
 {
-  "api_server_addr_comment":"此处不要填,系统会调用接口自动填",
+  "api_server_addr_comment":"ip:port",
   "api_server_addr": "",
   "redis_statefulset_replicas_comment":"Redis服务个数,调用kubectl get pod 后看到的redis-cluster-node 类型的pod的数量",
   "redis_statefulset_replicas": "3",
