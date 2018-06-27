@@ -31,7 +31,7 @@ LOG_DIC="/home/redis/log/"
 NODES_CONFIG_FILE="${data_dic}nodes.conf"
 CLUSTER_STATEFULSET_NAME="redis-cluster-node"
 CLUSTER_SERVICE_NAME="redis-cluster-svc"
-CLUSTER_NAMESPACE="default"
+CLUSTER_NAMESPACE=${MY_POD_NAMESPACE}
 ############################################################################################################### 
 
 
@@ -451,16 +451,19 @@ function cluster_launcher(){
         if test $NEW_IP_LENGTH -ge $OLD_IP_LENGTH ; then
         # 如果发现集群的replicas变少了,就不保存ip信息了,不允许缩容 
             OLD_IP_LENGTH=$NEW_IP_LENGTH
+            if test ${#CLUSTER_CHECK_RESULT} == "0" ; then
+                PING=$(redis-cli -p ${REDIS_PORT} ping)
+                if test $? != "0" ; then
+                    # exit 1
+                    curl -X DELETE ${API_SERVER_ADDR}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods/${MY_POD_NAME}
+                fi
+            fi
             if test $CLUSTER_CHECK_RESULT == "0" ; then 
                 log_debug ">>> Back up nodes.conf"
                 save_relation "old"
             else
                 log_error "Redis Cluster is not healthy!"
 				sleep 2
-                PING=$(redis-cli -p ${REDIS_PORT} ping)
-                if test $? != "0" ; then
-                    exit 1
-                fi
             fi
         fi
         sleep 5
