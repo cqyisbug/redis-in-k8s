@@ -60,7 +60,7 @@ RUN set -ex; \
 #  RUN gem install redis -V
 #  RUN export PATH="$PATH:/usr/src/redis/src/"
 
-RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/;
+RUN gem sources --add https://gems.ruby-china.com/ --remove https://rubygems.org/;
 
 EXPOSE 6379
 EXPOSE 6380
