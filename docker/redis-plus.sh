@@ -32,7 +32,7 @@ NODES_CONFIG_FILE="${data_dic}nodes.conf"
 CLUSTER_STATEFULSET_NAME="redis-cluster-node"
 CLUSTER_SERVICE_NAME="redis-cluster-svc"
 CLUSTER_NAMESPACE=${MY_POD_NAMESPACE}
-############################################################################################################### 
+############################################################################################################# 
 
 
 
@@ -44,7 +44,7 @@ CLUSTER_NAMESPACE=${MY_POD_NAMESPACE}
 # LOG_LEVEL
 # REDIS_PORT
 # MY_POD_IP
-###############################################################################################################                  
+#############################################################################################################                  
 
 
 
@@ -108,7 +108,7 @@ function log_error(){
         echo -e "\033[31m$time  - [ERR] $1\033[0m"
     fi 
 }
-###############################################################################################################
+#############################################################################################################
 
 
 
@@ -203,179 +203,7 @@ ${LOG_DIC}redis.log {
 EOF
     crond 
 }
-###############################################################################################################
-
-
-
-
-#############################################  MASTER  ########################################################
-# 哨兵模式 master节点启动流程代码
-function master_launcher(){
-
-    log_info ">>> Master Port : $MASTER_PORT     "
-    log_info ">>> Sentinel HOST: $SENTINEL_HOST   "
-    log_info ">>> Sentinel Port: $SENTINEL_PORT   "
-
-    if test -f "/home/redis_config/slave.conf" ; then
-        cp /home/redis_config/slave.conf ${DATA_DIC}slave.conf
-    else
-        log_error "Could not find file : /home/redis_config/slave.conf"
-    fi
-
-    if test -f "/home/redis_config/redis.conf" ; then
-        cp /home/redis_config/redis.conf ${DATA_DIC}redis.conf
-    else
-        log_error "Could not find file : /home/redis_config/redis.conf"
-    fi
-
-    # 循环10次
-    guard=0
-    while test $guard -lt 10 ; do
-        SENTINEL_IP=$(nslookup $SENTINEL_HOST 2>/dev/null | grep 'Address' | awk '{print $3}')
-        MASTER_IP=$(redis-cli -h $SENTINEL_IP -p $SENTINEL_PORT --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
-        if [[ -n $MASTER_IP && $MASTER_IP != "ERROR" ]] ; then
-            MASTER_IP="${MASTER_IP//\"}"
-            # 通过哨兵找到master，验证master是否正确
-            redis-cli -h $MASTER_IP -p $MASTER_PORT INFO
-            if test "$?" == "0" ; then
-                {
-                    sed -i "s/%master-ip%/$MASTER_IP/" ${DATA_DIC}slave.conf
-                    sed -i "s/%master-port%/$MASTER_PORT/" ${DATA_DIC}slave.conf
-                    PERSISTENT_PATH="/data/redis"
-                    sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" ${DATA_DIC}slave.conf
-                    echo "slave-announce-ip ${MY_POD_IP}" 
-                    echo "slave-announce-port $MASTER_PORT" 
-                    echo "logfile ${DATA_DIC}redis.log"
-                } >> ${DATA_DIC}slave.conf
-                redis-server ${DATA_DIC}slave.conf --protected-mode no
-                break
-            else
-                log_error "Can not connect to Master . Waiting...."
-            fi
-        fi
-        let guard++
-        # 如果循环了多次，都没有找到，那么就放弃啦，再来一轮寻找
-        if test $guard -ge 10 ; then
-            log_info "Starting master ...."
-            redis-server ${DATA_DIC}redis.conf --protected-mode no
-            break
-        fi
-        sleep 2
-    done
-}
-
-###############################################################################################################
-
-
-##############################################  SLAVE   #######################################################
-# 哨兵模式 slave节点启动流程代码
-function slave_launcher(){
-
-    log_info ">>> Master Host : $MASTER_HOST "
-    log_info ">>> Master Port : $MASTER_PORT "
-    log_info ">>> Sentinel HOST: $SENTINEL_HOST  "
-    log_info ">>> Sentinel Port: $SENTINEL_PORT "
-
-    if test -f "/home/redis_config/slave.conf" ; then
-        cp /home/redis_config/slave.conf ${DATA_DIC}slave.conf
-    else
-        log_error "Could not find file : /home/redis_config/slave.conf"
-    fi
-
-
-    while true; do
-        SENTINEL_IP=$(nslookup ${SENTINEL_HOST} 2>/dev/null | grep 'Address' | awk '{print $3}')
-        MASTER_IP=$(redis-cli -h ${SENTINEL_IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
-        if [[ -n ${MASTER_IP} ]] && [[ ${MASTER_IP} != "ERROR" ]] ; then
-            MASTER_IP="${MASTER_IP//\"}"
-        else
-            sleep 2
-            continue
-        fi
-
-        # 先从sentinel节点查找主节点信息，如果实在没有就直接从master节点找
-        redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
-        if [[ "$?" == "0" ]]; then
-            break
-        fi
-
-        log_error "Can not connect to Master .  Waiting..."
-        sleep 5
-    done
-
-    {
-        sed -i "s/%master-ip%/${MASTER_IP}/" ${DATA_DIC}slave.conf
-        sed -i "s/%master-port%/${MASTER_PORT}/" ${DATA_DIC}slave.conf
-        PERSISTENT_PATH="${DATA_DIC}slave"
-        sed -i "s|%persistent_path%|${PERSISTENT_PATH}|" ${DATA_DIC}slave.conf
-
-        echo "slave-announce-ip ${MY_POD_IP}" 
-        echo "slave-announce-port $MASTER_PORT" 
-        echo "logfile ${DATA_DIC}redis.log" 
-    } >> ${DATA_DIC}slave.conf
-
-    redis-server  ${DATA_DIC}slave.conf --protected-mode no
-}
-###############################################################################################################
-
-
-#############################################  SENTINEL  #####################################################
-# 哨兵模式 哨兵节点启动流程代码
-function sentinel_launcher(){
-
-    log_info ">>> Master Host : $MASTER_HOST     "
-    log_info ">>> Master Port : $MASTER_PORT     "
-    log_info ">>> Sentinel SVC : $SENTINEL_SVC    "
-    log_info ">>> Sentinel Port: $SENTINEL_PORT   "
-
-    MASTER_IP=""
-    while true; do
-        index=0
-        while true; do
-            let index++
-            IP_ARRAY=$(nslookup $SENTINEL_SVC 2>/dev/null | grep 'Address' |awk '{print $3}' )
-            for IP in $IP_ARRAY ;
-            do
-                MASTER_IP=$(redis-cli -h ${IP} -p ${SENTINEL_PORT} --csv SENTINEL get-master-addr-by-name mymaster | tr ',' ' ' | cut -d' ' -f1)
-                if [[ -n ${MASTER_IP} &&  ${MASTER_IP} != "ERROR" ]] ; then
-                    MASTER_IP="${MASTER_IP//\"}"
-                fi
-                redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
-                if test "$?" == "0" ; then
-                    break 3
-                fi
-                log_error "Sentinel IP:${IP}  Connecting to master failed.  Waiting..."
-            done
-            if test $index -ge 10 ; then
-                log_info "Could not find the Sentinel ,Try to connenct the master directly!..."
-                MASTER_IP=$(nslookup $MASTER_HOST 2>/dev/null | grep 'Address' | awk '{print $3}')
-                redis-cli -h ${MASTER_IP} -p ${MASTER_PORT} INFO
-                if test "$?" == "0" ; then
-                    break 2
-                else
-                    index=0
-                fi
-                log_error "Sentinel IP:${IP}  Master IP: ${MASTER_IP}  Connecting to master failed.  Waiting..."
-            fi
-        done
-    done
-
-    log_info "Master: $MASTER_IP"
-
-    {
-        echo "port $SENTINEL_PORT"
-        echo "sentinel monitor mymaster ${MASTER_IP} ${MASTER_PORT} 2"
-        echo "sentinel down-after-milliseconds mymaster 30000"
-        echo "sentinel failover-timeout mymaster 180000"
-        echo "sentinel parallel-syncs mymaster 1"
-        echo "bind ${MY_POD_IP} 127.0.0.1"
-        echo "logfile ${DATA_DIC}redis.log"
-    } >> ${DATA_DIC}redis.conf
-
-    redis-sentinel ${sentinel_conf} --protected-mode no
-}
-###############################################################################################################
-
+#############################################################################################################
 
 ##############################################  CLUSTER  ######################################################
 # 集群模式 普通集群节点启动流程代码
@@ -471,7 +299,7 @@ function cluster_launcher(){
 }
 
 
-###############################################################################################################
+#############################################################################################################
 
 
 
@@ -638,12 +466,11 @@ function cluster_ctrl_launcher(){
 }
 
 
-###############################################################################################################
+#############################################################################################################
 
 
 ############################################  CLUSTER CTRL EXTEND  ############################################
 if test $# -ne 0 ; then
-
     case $1 in
         "health")
             # --health 命令不是原生的,对 redis-trib.rb 做过修改
@@ -672,7 +499,7 @@ if test $# -ne 0 ; then
     exit 0
 fi
 
-###############################################################################################################
+#############################################################################################################
 
 time=$(date "+%Y-%m-%d")
 
