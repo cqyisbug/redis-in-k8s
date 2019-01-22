@@ -48,19 +48,10 @@ RUN set -ex; \
 	\
 	mkdir -p /home/redis_config ;\
 	\
-#	mv /usr/src/redis/src/redis-trib.rb /redis-trib.rb ;\
-	\
 	rm -r /usr/src/redis; \
 	\
     apk del .build-deps ; \
 	apk add --no-cache curl jq logrotate 
-
-#  安装ruby环境  由于ruby的原因安装gem install redis的时候会稍微报点错,但是这个错误在docker里面会被捕捉到,所以放到shell 脚本里面去了
-#  RUN gem sources --add https://gems.ruby-china.org/ --remove https://rubygems.org/
-#  RUN gem install redis -V
-#  RUN export PATH="$PATH:/usr/src/redis/src/"
-
-RUN gem sources --add https://gems.ruby-china.com/ --remove https://rubygems.org/;
 
 EXPOSE 6379
 EXPOSE 6380
@@ -69,16 +60,10 @@ EXPOSE 26379
 COPY redis.conf /home/redis_config/redis.conf
 RUN touch /home/redis_config/sentinel.conf
 COPY redis-plus.sh /redis-plus.sh
-COPY redis-4.0.1.gem /redis.gem
-COPY rdoc-6.0.0.gem /rdoc.gem
-COPY redis-trib.rb /redis-trib.rb
 COPY logo.txt  /logo.txt
 
 
-RUN chmod +x /redis-plus.sh ;\
-	chmod +x /redis-trib.rb ;\
-	cp /redis-trib.rb /usr/bin/redis-trib.rb ;\
-	chmod +x /usr/bin/redis-trib.rb
+RUN chmod +x /redis-plus.sh ;
 
 CMD [ "/redis-plus.sh" ]
 ENTRYPOINT [ "bash", "-c" ]

@@ -445,7 +445,7 @@ function cluster_launcher(){
     sleep 5
     OLD_IP_LENGTH=$(ip_array_length ${CLUSTER_SERVICE_NAME}) 
     while true ; do 
-        CLUSTER_CHECK_RESULT=$(ruby /redis-trib.rb check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
+        CLUSTER_CHECK_RESULT=$(ruby redis-cli --cluster check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
         log_debug ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         NEW_IP_LENGTH=$(ip_array_length ${CLUSTER_SERVICE_NAME})
         if test $NEW_IP_LENGTH -ge $OLD_IP_LENGTH ; then
@@ -555,9 +555,9 @@ function cluster_ctrl_launcher(){
 
                 log_info ">>> Performing Build Redis Cluster..."
                 if test $REDIS_CLUSTER_REPLICAS -eq 0 ;then
-                    yes yes | head -1 | ruby /redis-trib.rb create  $CLUSTER_CONFIG
+                    yes yes | head -1 | redis-cli --cluster create  $CLUSTER_CONFIG
                 else
-                    yes yes | head -1 | ruby /redis-trib.rb create --replicas $REDIS_CLUSTER_REPLICAS $CLUSTER_CONFIG
+                    yes yes | head -1 | redis-cli --cluster create --replicas $REDIS_CLUSTER_REPLICAS $CLUSTER_CONFIG
                 fi
                 log_info "[OK] Congratulations,Redis Cluster Completed!"
                 break
@@ -628,7 +628,7 @@ function cluster_ctrl_launcher(){
             nodeid=$(redis-cli -h $ip -p ${REDIS_PORT} cluster nodes | grep myself | awk '{print $1}')
             redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster slots | grep $nodeid
             if test $? != "0" ; then
-                 ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+                 redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
             fi
         done
 
@@ -647,17 +647,17 @@ if test $# -ne 0 ; then
     case $1 in
         "health")
             # --health 命令不是原生的,对 redis-trib.rb 做过修改
-            ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
+            redis-cli --cluster check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
             ;;
         "-h")
             # --health 命令不是原生的,对 redis-trib.rb 做过修改
-            ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
+            redis-cli --cluster check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
             ;;
         "rebalance")
-            ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+            redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
             ;;
         "-r")
-            ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+            redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
             ;;
         *)
             echo "redis-plus helper~"
@@ -670,28 +670,9 @@ if test $# -ne 0 ; then
         ;;
     esac
     exit 0
-
-    # if test $1 == "health" ; then
-    #     ruby /redis-trib.rb check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
-    #     exit 0 
-    # fi
-
-    # if test $1 == "rebalance" ; then
-    #     ruby /redis-trib.rb rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
-    #     exit 0 
-    # fi
-
-    # echo "redis-plus helper~"
-    # echo "usage: sh redis-plus.sh [command]"
-    # echo "[command]:"
-    # echo "  health : get redis cluster health info"
-    # echo "  rebalance : rebalance redis cluster slots"
-
-    # exit 0
 fi
 
 ###############################################################################################################
-
 
 time=$(date "+%Y-%m-%d")
 
@@ -702,12 +683,6 @@ sed -i "s/{port}/${REDIS_PORT}/g" /logo.txt
 sed -i "s/{date}/${time}/g" /logo.txt
 cat /logo.txt
 #############################################################################################################
-
-# 安装 redis-trib.rb 的依赖
-gem install --local /rdoc.gem 2>/dev/null 1>&2
-gem install --local /redis.gem 2>/dev/null 1>&2
-rm -f /rdoc.gem
-rm -f /redis.gem
 
 mkdir -p  /home/redis/data
 mkdir -p  /home/redis/log
