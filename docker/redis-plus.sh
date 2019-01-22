@@ -1,57 +1,36 @@
 #!/bin/bash
 
-#==================================================================================================================
+# ==================================================================================
 #                                  Redis in K8s
-#   1. 哨兵模式
-#       1. MASTER = true
-#           此节点可能会变成slave,但是其一开始是master,所以有一个循环,先循环一定次数来查找哨兵,如果没找到就启动自身
-#       2. SLAVE = true
-#           通过哨兵节点来查询主节点的信息,一旦找到就启动
-#       3. SENTINEL = true
-#           机制和slave一样
-#
-#
-#   2. 集群(主从)模式
-#       1. CLUSTER = true
-#           启动一个多节点的redis服务,各个节点之间没有联系
-#       2. CLUSTER_CTRL = true
-#           将之前的节点拼接成一个集群
 #      集群模式的说明:
 #      集群普通节点的pod数量 必须 大于等于 (集群每个主节点的副本数*3 + 3)
 #      如果想让集群外访问,只需要在yaml里面配置就可以了,不需要再来修改 shell 脚本
 #
 #
-#==================================================================================================================
-
-
-
-############################################   GLOBAL VARIABLES   ############################################
+#                          yaml中的环境变量
+# REDIS_CLUSTER_REPLICAS            主节点副本数
+# REDIS_STATEFULSET_REPLICAS        所有redis sts的个数
+# API_SERVER_ADDR                   api server地址
+# LOG_LEVEL                         日志等级定义, 0:debug 1:info 2:warn 3:error
+# REDIS_PORT                        redis运行端口
+# MY_POD_IP                         自身的pod的IP地址
+#
+#                          全局变量
+# 数据目录
 DATA_DIC="/home/redis/data/"
+# 日志目录
 LOG_DIC="/home/redis/log/"
+# 配置文件地址
 NODES_CONFIG_FILE="${data_dic}nodes.conf"
+# sts的名字
 CLUSTER_STATEFULSET_NAME="redis-cluster-node"
+# svc的名字
 CLUSTER_SERVICE_NAME="redis-cluster-svc"
+# 指定的命名空间
 CLUSTER_NAMESPACE=${MY_POD_NAMESPACE}
-############################################################################################################# 
+# ==================================================================================
 
 
-
-
-############################################     ENVIRONMENT      #############################################
-# REDIS_CLUSTER_REPLICAS
-# REDIS_STATEFULSET_REPLICAS
-# API_SERVER_ADDR
-# LOG_LEVEL
-# REDIS_PORT
-# MY_POD_IP
-#############################################################################################################                  
-
-
-
-
-##############################################   LOG FUNC   ###################################################
-
-# 日志等级定义, 0:debug 1:info 2:warn 3:error
 
 if test ! $LOG_LEVEL ; then
     LOG_LEVEL=0
@@ -108,11 +87,7 @@ function log_error(){
         echo -e "\033[31m$time  - [ERR] $1\033[0m"
     fi 
 }
-#############################################################################################################
 
-
-
-########################################     APIS     #########################################################
 function ip_array_length(){
     ips=$(nslookup $1 2>/dev/null | grep 'Address' |awk '{print $3}')
     index=0
@@ -129,7 +104,7 @@ function get_nodes(){
     echo $nodes
 }
 
-# 获取指定statefulset 下是否使用hostnetwor
+# 获取指定statefulset 下是否使用hostnetwork
 function use_hostnetwork(){
     hostnetwork=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/$1 | jq ".spec.template.spec.hostNetwork" )
     echo $hostnetwork
@@ -203,9 +178,7 @@ ${LOG_DIC}redis.log {
 EOF
     crond 
 }
-#############################################################################################################
 
-##############################################  CLUSTER  ######################################################
 # 集群模式 普通集群节点启动流程代码
 function cluster_launcher(){
 
@@ -298,13 +271,6 @@ function cluster_launcher(){
     done
 }
 
-
-#############################################################################################################
-
-
-
-
-############################################### CLUSTER CTRL CENTER  ##########################################
 # 集群模式 集群配置节点启动流程代码
 function cluster_ctrl_launcher(){
 
@@ -465,11 +431,6 @@ function cluster_ctrl_launcher(){
     done
 }
 
-
-#############################################################################################################
-
-
-############################################  CLUSTER CTRL EXTEND  ############################################
 if test $# -ne 0 ; then
     case $1 in
         "health")
@@ -499,17 +460,13 @@ if test $# -ne 0 ; then
     exit 0
 fi
 
-#############################################################################################################
-
 time=$(date "+%Y-%m-%d")
 
-#############################################  LOGO  ########################################################
 sed -i "s/{mode}/${MODE}/g" /logo.txt
 sed -i "s/{redis_version}/${REDIS_VERSION}/g" /logo.txt
 sed -i "s/{port}/${REDIS_PORT}/g" /logo.txt
 sed -i "s/{date}/${time}/g" /logo.txt
 cat /logo.txt
-#############################################################################################################
 
 mkdir -p  /home/redis/data
 mkdir -p  /home/redis/log

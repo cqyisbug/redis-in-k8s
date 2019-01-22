@@ -58,12 +58,13 @@ EXPOSE 6380
 EXPOSE 26379
 
 COPY redis.conf /home/redis_config/redis.conf
-RUN touch /home/redis_config/sentinel.conf
 COPY redis-plus.sh /redis-plus.sh
 COPY logo.txt  /logo.txt
-
 
 RUN chmod +x /redis-plus.sh ;
 
 CMD [ "/redis-plus.sh" ]
 ENTRYPOINT [ "bash", "-c" ]
+
+
+curl -X GET https://172.20.0.34:6443/api/v1/nodes --header "Authorization: Bearer $TOKEN" --insecure
