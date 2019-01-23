@@ -291,6 +291,7 @@ def check_redis(return_code=False):
         elif "Could not connect" in rr:
             resultCode = 5
         else:
+            print(rr)
             resultCode = 0
         if return_code:
             return resultCode
