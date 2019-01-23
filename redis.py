@@ -274,17 +274,19 @@ def check_redis(return_code=False):
                                shell=True,
                                stdout=subprocess.PIPE)
         result = run.stdout.read()
-        dic = json.loads(result)
-        if dic.get("code") == 0:
-            if return_code:
-                return 0
-            else:
-                return True
-        else:
-            if return_code:
-                return dic.get("code")
-            else:
-                return False
+        
+        if "Nodes don't agree about configuration" in result:
+            return 1
+        elif "Some slots in migrating state" in result:
+            return 2
+        elif "Some slots in importing state" in result:
+            return 3
+        elif "Not all slots are covered by nodes" in result:
+            return 4
+        elif "Could not connect" in result:
+            return 5
+        else
+            return 0
     except Exception:
         if return_code:
             return 5
