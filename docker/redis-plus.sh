@@ -366,7 +366,6 @@ function cluster_ctrl_launcher(){
         fi
     done
 
-
     sleep 10
     while true ; do
         log_info ">>> Performing Check Redis Cluster Pod Replicas"
@@ -377,7 +376,6 @@ function cluster_ctrl_launcher(){
         
         log_info ">>> Current Pod Replicas : $NEW_REPLICAS"
         log_info ">>> Current Nodes Quantum : $NODES"
-
 
         if [[ $NEW_REPLICAS -gt $NODES ]] && [[ $HOST_NETWORK == "true"  ]] ; then
             log_warn " When you use host network,make sure that the number of pod is less than node"
@@ -393,7 +391,7 @@ function cluster_ctrl_launcher(){
             count=$(redis-cli -h $ip -p ${REDIS_PORT} cluster nodes 2>/dev/null | wc -l)
             if test $count == "1" ; then 
                 redis-cli -h $ip -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
-                #如果集群内存在没有从节点的主节点,就成为其从节点
+                # 如果集群内存在没有从节点的主节点,就成为其从节点
                 masters=$(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | grep master | awk '{print $1}')
                 tmp=""
                 for master in $masters ; do
@@ -419,17 +417,15 @@ function cluster_ctrl_launcher(){
         # check redis cluster and rebalance corn
         redis-cli --cluster check  ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME}:${REDIS_PORT}
         
-        #如果发现一个master上没有slot 就开始执行rebalance
+        # 如果发现一个master上没有slot 就开始执行rebalance
         POD_IPS=$(nslookup ${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' |awk '{print $3}')
         for ip in $POD_IPS ; do
             nodeid=$(redis-cli -h $ip -p ${REDIS_PORT} cluster nodes | grep myself | awk '{print $1}')
             redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster slots | grep $nodeid
             if test $? != "0" ; then
-                 redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --cluster-use-empty-masters
+                 redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --cluster-use-empty-masters
             fi
         done
-
-
         sleep 10
     done
 }
