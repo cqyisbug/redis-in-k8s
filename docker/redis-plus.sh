@@ -91,6 +91,9 @@ function log_error(){
 }
 
 function curls(){
+    echo "============== curls ================"
+    echo $1
+    echo $TOKEN
     result=$(curl -X GET $1 --header "Authorization: Bearer ${TOKEN}" --insecure)
     echo $result
 }
@@ -253,13 +256,13 @@ function cluster_launcher(){
     sleep 5
     OLD_IP_LENGTH=$(ip_array_length ${CLUSTER_SERVICE_NAME}) 
     while true ; do 
-        CLUSTER_CHECK_RESULT=$(redis-cli --cluster check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
+        CLUSTER_CHECK_RESULT=$(redis-cli --cluster check ${MY_POD_IP}:${REDIS_PORT} | grep -i error | wc -l )
         log_debug ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         NEW_IP_LENGTH=$(ip_array_length ${CLUSTER_SERVICE_NAME})
         if test $NEW_IP_LENGTH -ge $OLD_IP_LENGTH ; then
         # 如果发现集群的replicas变少了,就不保存ip信息了,不允许缩容 
             OLD_IP_LENGTH=$NEW_IP_LENGTH
-            if test ${#CLUSTER_CHECK_RESULT} == "0" ; then
+            if test $CLUSTER_CHECK_RESULT != "0" ; then
                 PING=$(redis-cli -p ${REDIS_PORT} ping)
                 if test $? != "0" ; then
                     # exit 1
@@ -359,7 +362,7 @@ function cluster_ctrl_launcher(){
                 if test $REDIS_CLUSTER_REPLICAS -eq 0 ;then
                     yes yes | head -1 | redis-cli --cluster create  $CLUSTER_CONFIG
                 else
-                    yes yes | head -1 | redis-cli --cluster create --replicas $REDIS_CLUSTER_REPLICAS $CLUSTER_CONFIG
+                    yes yes | head -1 | redis-cli --cluster create --cluster-replicas $REDIS_CLUSTER_REPLICAS $CLUSTER_CONFIG
                 fi
                 log_info "[OK] Congratulations,Redis Cluster Completed!"
                 break
@@ -442,13 +445,8 @@ function cluster_ctrl_launcher(){
 if test $# -ne 0 ; then
     case $1 in
         "health")
-            # --health 命令不是原生的,对 redis-trib.rb 做过修改
-            redis-cli --cluster check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
-            ;;
-        "-h")
-            # --health 命令不是原生的,对 redis-trib.rb 做过修改
-            redis-cli --cluster check --health ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
-            ;;
+            redis-cli --cluster check ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
+            ;
         "rebalance")
             redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
             ;;
