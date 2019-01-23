@@ -285,7 +285,7 @@ def check_redis(return_code=False):
             return 4
         elif "Could not connect" in result:
             return 5
-        else
+        else:
             return 0
     except Exception:
         if return_code:
