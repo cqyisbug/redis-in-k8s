@@ -292,6 +292,13 @@ def check_redis(return_code=False):
             resultCode = 5
         else:
             resultCode = 0
+        if return_code:
+            return resultCode
+        else:
+            if resultCode == 0:
+                return True
+            else:
+                return False
     except Exception:
         if return_code:
             return 5
