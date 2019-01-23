@@ -21,7 +21,7 @@ DATA_DIC="/home/redis/data/"
 # 日志目录
 LOG_DIC="/home/redis/log/"
 # 配置文件地址
-NODES_CONFIG_FILE="${data_dic}nodes.conf"
+NODES_CONFIG_FILE="${DATA_DIC}nodes.conf"
 # sts的名字
 CLUSTER_STATEFULSET_NAME="redis-cluster-node"
 # svc的名字
