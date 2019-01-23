@@ -6,7 +6,7 @@ ps -ef | grep redis | awk '{print $2}' | xargs kill -9
 rpm -qa | grep -E "redis|jemalloc" | rpm -e
 yum install -y gcc
 
-REDIS_VERSION=4.0.8
+REDIS_VERSION=5.0.3
 
 command_exists(){
 	command -v "$@" > /dev/null 2>&1
@@ -26,8 +26,8 @@ if ! command_exists redis-cli ; then
 	cd ..
 	make MALLOC=$(which jemalloc.sh)
 	make install
-	cp src/redis-trib.rb /usr/bin/redis-trib.rb
-	chmod +x /usr/bin/redis-trib.rb
+	# cp src/redis-trib.rb /usr/bin/redis-trib.rb
+	# chmod +x /usr/bin/redis-trib.rb
 fi
 
 Cluster_Config=""
@@ -48,4 +48,4 @@ for file in 7000 7001 7002 7003 7004 7005 ; do
 	Cluster_Config=$Cluster_Config"$(hostname -i):$file "
 done
 
-echo yes | redis-trib.rb create --replicas 1 $Cluster_Config
+echo yes | redis-cli --cluster create --cluster-replicas 1 $Cluster_Config
