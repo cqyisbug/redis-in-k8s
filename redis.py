@@ -274,20 +274,25 @@ def check_redis(return_code=False):
         run = subprocess.Popen("/root/local/bin/kubectl exec -it $(/root/local/bin/kubectl get po | grep redis-ctrl-center | awk '{print $1}')  /bin/sh /redis-plus.sh health 2>/dev/null",
                                shell=True,
                                stdout=subprocess.PIPE)
-        result = run.stdout.read()
-        print(result)
-        if "Nodes don't agree about configuration" in result:
-            return 1
-        elif "Some slots in migrating state" in result:
-            return 2
-        elif "Some slots in importing state" in result:
-            return 3
-        elif "Not all slots are covered by nodes" in result:
-            return 4
-        elif "Could not connect" in result:
-            return 5
+        rr = run.stdout.read()
+        resultCode = -1
+        if len(rr) == 0:
+            if return_code :
+                return 5
+            else:
+                return False
+        if "Nodes don't agree about configuration" in rr:
+            resultCode = 1
+        elif "Some slots in migrating state" in rr:
+            resultCode = 2
+        elif "Some slots in importing state" in rr:
+            resultCode = 3
+        elif "Not all slots are covered by nodes" in rr:
+            resultCode = 4
+        elif "Could not connect" in rr:
+            resultCode = 5
         else:
-            return 0
+            resultCode = 0
     except Exception:
         if return_code:
             return 5
