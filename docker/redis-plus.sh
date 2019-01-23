@@ -447,17 +447,12 @@ if test $# -ne 0 ; then
         "rebalance")
             redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --cluster-use-empty-masters
             ;;
-        "-r")
-            redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --cluster-use-empty-masters
-            ;;
         *)
             echo "redis-plus helper~"
             echo "usage: sh redis-plus.sh [command]"
             echo "[command]:"
             echo "  health : get redis cluster health info"
-            echo "  -h"
             echo "  rebalance : rebalance redis cluster slots"
-            echo "  -r"
         ;;
     esac
     exit 0
