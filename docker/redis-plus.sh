@@ -91,9 +91,6 @@ function log_error(){
 }
 
 function curls(){
-    echo "============== curls ================"
-    echo $1
-    echo $TOKEN
     result=$(curl -X GET $1 --header "Authorization: Bearer ${TOKEN}" --insecure)
     echo $result
 }
