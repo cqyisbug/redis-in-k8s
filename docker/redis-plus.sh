@@ -28,6 +28,8 @@ CLUSTER_STATEFULSET_NAME="redis-cluster-node"
 CLUSTER_SERVICE_NAME="redis-cluster-svc"
 # 指定的命名空间
 CLUSTER_NAMESPACE=${MY_POD_NAMESPACE}
+# TOKEN
+TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
 # ==================================================================================
 
 
@@ -88,6 +90,11 @@ function log_error(){
     fi 
 }
 
+function curls(){
+    result=$(curl -X GET $1 --header "Authorization: Bearer ${TOKEN}" --insecure)
+    echo $result
+}
+
 function ip_array_length(){
     ips=$(nslookup $1 2>/dev/null | grep 'Address' |awk '{print $3}')
     index=0
@@ -100,19 +107,19 @@ function ip_array_length(){
 
 # 获取node的个数
 function get_nodes(){
-    nodes=$(curl -s ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
+    nodes=$(curls ${API_SERVER_ADDR}/api/v1/nodes | jq ".items | length")
     echo $nodes
 }
 
 # 获取指定statefulset 下是否使用hostnetwork
 function use_hostnetwork(){
-    hostnetwork=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/$1 | jq ".spec.template.spec.hostNetwork" )
+    hostnetwork=$(curls ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/$1 | jq ".spec.template.spec.hostNetwork" )
     echo $hostnetwork
 }
 
 # 获取指定statefulset 下的副本数
 function get_replicas(){
-    replicas=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/$1 | jq ".spec.replicas")
+    replicas=$(curls ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/$1 | jq ".spec.replicas")
     echo $replicas
 }
 
@@ -143,7 +150,7 @@ function save_relation(){
     rm -f ${DATA_DIC}cluster-$file.ip
     index=0
     while test $index -lt $REDIS_STATEFULSET_REPLICAS ; do
-        curl -s ${API_SERVER_ADDR}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods/${CLUSTER_STATEFULSET_NAME}-$index | jq ".status.podIP"  >> ${DATA_DIC}cluster-$file.ip 
+        curls ${API_SERVER_ADDR}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods/${CLUSTER_STATEFULSET_NAME}-$index | jq ".status.podIP"  >> ${DATA_DIC}cluster-$file.ip 
         let index++
     done
     sed -i "s/\"//g" ${DATA_DIC}cluster-$file.ip
@@ -256,7 +263,8 @@ function cluster_launcher(){
                 PING=$(redis-cli -p ${REDIS_PORT} ping)
                 if test $? != "0" ; then
                     # exit 1
-                    curl -X DELETE ${API_SERVER_ADDR}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods/${MY_POD_NAME}
+                    # curl -X DELETE ${API_SERVER_ADDR}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods/${MY_POD_NAME}
+                    curl -X DELETE ${API_SERVER_ADDR}/api/v1/namespaces/${CLUSTER_NAMESPACE}/pods/${MY_POD_NAME} --header "Authorization: Bearer ${TOKEN}" --insecure
                 fi
             fi
             if test $CLUSTER_CHECK_RESULT == "0" ; then 
@@ -278,7 +286,7 @@ function cluster_ctrl_launcher(){
     log_info ">>> REDIS_CLUSTER_REPLICAS : $REDIS_CLUSTER_REPLICAS  "
 
     while true ; do
-        Listener=$(curl -s ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/${CLUSTER_STATEFULSET_NAME} | jq ".code")
+        Listener=$(curls ${API_SERVER_ADDR}/apis/apps/v1/namespaces/${CLUSTER_NAMESPACE}/statefulsets/${CLUSTER_STATEFULSET_NAME} | jq ".code")
         if [[ $Listener == "404" ]] ; then
             log_info ">>> Api server address: ${API_SERVER_ADDR}"
             log_info ">>> Waiting until the statefulset created: ${CLUSTER_STATEFULSET_NAME}"
