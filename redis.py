@@ -274,6 +274,7 @@ def check_redis(return_code=False):
                                shell=True,
                                stdout=subprocess.PIPE)
         result = run.stdout.read()
+        print(result)
         
         if "Nodes don't agree about configuration" in result:
             return 1
@@ -300,7 +301,7 @@ output.append("|  1   | Nodes don't agree about configuration |")
 output.append("|  2   |     Some slots in migrating state     |")
 output.append("|  3   |     Some slots in importing state     |")
 output.append("|  4   |   Not all slots are covered by nodes  |")
-output.append("|  5   |    Can not connect to redis cluster   |")
+output.append("|  5   |    Could not connect to redis cluster   |")
 
 
 def print_chosen(line):
