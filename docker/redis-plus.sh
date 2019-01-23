@@ -430,7 +430,7 @@ function cluster_ctrl_launcher(){
             nodeid=$(redis-cli -h $ip -p ${REDIS_PORT} cluster nodes | grep myself | awk '{print $1}')
             redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster slots | grep $nodeid
             if test $? != "0" ; then
-                 redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+                 redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --cluster-use-empty-masters
             fi
         done
 
@@ -445,10 +445,10 @@ if test $# -ne 0 ; then
             redis-cli --cluster check ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
             ;;
         "rebalance")
-            redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+            redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --cluster-use-empty-masters
             ;;
         "-r")
-            redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
+            redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --cluster-use-empty-masters
             ;;
         *)
             echo "redis-plus helper~"
