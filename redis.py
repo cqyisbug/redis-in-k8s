@@ -189,7 +189,10 @@ def uninstall_redis():
     result = os.system(
         "/root/local/bin/kubectl get statefulset -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete statefulset ;"
         "/root/local/bin/kubectl get deployment -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete deployment ;"
-        "/root/local/bin/kubectl get service -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete service"
+        "/root/local/bin/kubectl get service -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete service ;"
+        "/root/local/bin/kubectl get serviceaccount -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete serviceaccount ;"
+        "/root/local/bin/kubectl get clusterrole -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete clusterrole ;"
+        "/root/local/bin/kubectl get clusterrolebinding -l app=redis | grep -v NAME | awk '{print $1}' | xargs /root/local/bin/kubectl delete clusterrolebinding ;"
     )
 
     if config["persistent_flag"]:

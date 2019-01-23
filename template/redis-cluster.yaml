@@ -2,11 +2,15 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: redis-sa
+  labels: 
+    app: redis
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: redis-cr
+  labels: 
+    app: redis
 rules:
 - apiGroups: [""]
   resources: ["pods","nodes","statefulsets","deployments","endpoints","services"]
@@ -17,6 +21,8 @@ kind: ClusterRoleBinding
 metadata: 
   name: read-crbind
   namespace: default
+  labels: 
+    app: redis
 subjects:
 - kind: ServiceAccount
   name: redis-sa
