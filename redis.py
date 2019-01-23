@@ -149,6 +149,7 @@ def install_redis():
     """
     try:
         # if any redis resources exist
+        print(check_redis())
         if not check_redis(return_code=True) == 5:
             print("Redis cluster already exists!")
             return False
@@ -275,7 +276,6 @@ def check_redis(return_code=False):
                                stdout=subprocess.PIPE)
         result = run.stdout.read()
         print(result)
-        
         if "Nodes don't agree about configuration" in result:
             return 1
         elif "Some slots in migrating state" in result:
