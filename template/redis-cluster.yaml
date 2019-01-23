@@ -45,7 +45,7 @@ spec:
         app: redis
     spec:
       terminationGracePeriodSeconds: 10
-      serviceAccountName: redis-ac
+      serviceAccountName: redis-sa
       containers:
       - name: redis-ctrl-center
         image: {{ redis_docker_image }}
@@ -84,7 +84,7 @@ spec:
       hostNetwork: {{ hostnetwork }}
       dnsPolicy: ClusterFirstWithHostNet
       terminationGracePeriodSeconds: 10
-      serviceAccountName: redis-ac
+      serviceAccountName: redis-sa
       containers:
       - name: redis-cluster-node
         image: {{ redis_docker_image }}
