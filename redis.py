@@ -266,7 +266,7 @@ def check_redis(return_code=False):
 |  2   |     Some slots in migrating state     |
 |  3   |     Some slots in importing state     |
 |  4   |   Not all slots are covered by nodes  |
-|  5   |       Can not find redis cluster      |
+|  5   |      Could not find redis cluster     |
 +------+---------------------------------------+
     """
     try:
@@ -305,7 +305,7 @@ output.append("|  1   | Nodes don't agree about configuration |")
 output.append("|  2   |     Some slots in migrating state     |")
 output.append("|  3   |     Some slots in importing state     |")
 output.append("|  4   |   Not all slots are covered by nodes  |")
-output.append("|  5   |    Could not connect to redis cluster   |")
+output.append("|  5   |   Could not connect to redis cluster  |")
 
 
 def print_chosen(line):
@@ -326,6 +326,7 @@ if __name__ == '__main__':
             print("redis uninstalled failed!")
     elif len(sys.argv) == 2 and sys.argv[1] == "check":
         code = check_redis(return_code=True)
+        print(code)
         print("+------+---------------------------------------+")
         print("| Code |                Explain                |")
         print("+------+---------------------------------------+")
