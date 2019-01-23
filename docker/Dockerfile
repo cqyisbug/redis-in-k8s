@@ -4,7 +4,7 @@ FROM alpine:3.6
 # author caiqyxyx
 # date 2017 12 17
 
-RUN apk add --no-cache 'su-exec>=0.2' sed bash ruby
+RUN apk add --no-cache 'su-exec>=0.2' sed bash
 
 ENV REDIS_VERSION 5.0.3
 ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz
