@@ -422,7 +422,7 @@ function cluster_ctrl_launcher(){
         done   
 
         # check redis cluster and rebalance corn
-        redis-trib.rb check  ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME}:${REDIS_PORT}
+        redis-cli --cluster check  ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME}:${REDIS_PORT}
         
         #如果发现一个master上没有slot 就开始执行rebalance
         POD_IPS=$(nslookup ${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' |awk '{print $3}')
