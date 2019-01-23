@@ -149,7 +149,6 @@ def install_redis():
     """
     try:
         # if any redis resources exist
-        print(check_redis())
         if not check_redis(return_code=True) == 5:
             print("Redis cluster already exists!")
             return False

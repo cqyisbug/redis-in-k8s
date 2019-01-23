@@ -446,7 +446,7 @@ if test $# -ne 0 ; then
     case $1 in
         "health")
             redis-cli --cluster check ${CLUSTER_SERVICE_NAME}:$REDIS_PORT
-            ;
+            ;;
         "rebalance")
             redis-cli --cluster rebalance $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}'):${REDIS_PORT} --auto-weights --use-empty-masters
             ;;
