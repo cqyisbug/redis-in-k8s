@@ -243,17 +243,12 @@ function cluster_launcher(){
 
     redis-server ${DATA_DIC}redis.conf --protected-mode no
 
-    # 如果已经有集群存在了就加入进去,没有集群,就不加入,这部分代码移动到了控制中心
-    # if [[ $(redis-cli -h ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} -p ${REDIS_PORT} cluster nodes | wc -l) -gt 1 ]] && [[ ! -f ${DATA_DIC}cluster-old.ip ]] ; then
-    #     redis-cli -p ${REDIS_PORT} cluster meet $(nslookup ${CLUSTER_STATEFULSET_NAME}-0.${CLUSTER_SERVICE_NAME} 2>/dev/null | grep 'Address' | awk '{print $3}') ${REDIS_PORT}
-    # fi 
-
     log_launcher
 
     sleep 5
     OLD_IP_LENGTH=$(ip_array_length ${CLUSTER_SERVICE_NAME}) 
     while true ; do 
-        CLUSTER_CHECK_RESULT=$(redis-cli --cluster check ${MY_POD_IP}:${REDIS_PORT} | grep -i error | wc -l )
+        CLUSTER_CHECK_RESULT=$(redis-cli --cluster check ${MY_POD_IP}:${REDIS_PORT} | grep -i err | wc -l )
         log_debug ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         NEW_IP_LENGTH=$(ip_array_length ${CLUSTER_SERVICE_NAME})
         if test $NEW_IP_LENGTH -ge $OLD_IP_LENGTH ; then
