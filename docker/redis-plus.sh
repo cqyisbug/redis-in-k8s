@@ -253,7 +253,7 @@ function cluster_launcher(){
     sleep 5
     OLD_IP_LENGTH=$(ip_array_length ${CLUSTER_SERVICE_NAME}) 
     while true ; do 
-        CLUSTER_CHECK_RESULT=$(ruby redis-cli --cluster check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
+        CLUSTER_CHECK_RESULT=$(redis-cli --cluster check --health ${MY_POD_IP}:${REDIS_PORT} | jq ".code")
         log_debug ">>> Health Result: ${CLUSTER_CHECK_RESULT}"
         NEW_IP_LENGTH=$(ip_array_length ${CLUSTER_SERVICE_NAME})
         if test $NEW_IP_LENGTH -ge $OLD_IP_LENGTH ; then
