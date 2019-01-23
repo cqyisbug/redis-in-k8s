@@ -65,6 +65,3 @@ RUN chmod +x /redis-plus.sh ;
 
 CMD [ "/redis-plus.sh" ]
 ENTRYPOINT [ "bash", "-c" ]
-
-
-curl -X GET https://172.20.0.34:6443/api/v1/nodes --header "Authorization: Bearer $TOKEN" --insecure
