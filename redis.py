@@ -286,7 +286,7 @@ def check_redis(return_code=False):
             resultCode = 2
         elif "Some slots in importing state" in rr:
             resultCode = 3
-        elif "Not all slots are covered by nodes" in rr:
+        elif "Not all 16384 slots are" in rr:
             resultCode = 4
         elif "Could not connect" in rr:
             resultCode = 5
@@ -334,7 +334,6 @@ if __name__ == '__main__':
             print("redis uninstalled failed!")
     elif len(sys.argv) == 2 and sys.argv[1] == "check":
         code = check_redis(return_code=True)
-        print(code)
         print("+------+---------------------------------------+")
         print("| Code |                Explain                |")
         print("+------+---------------------------------------+")
