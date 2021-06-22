@@ -165,6 +165,7 @@ spec:
   clusterIP: None
   selector:
     name: redis-cluster-node
+{% if hostnetwork %}
 ---
 apiVersion: v1
 kind: Service
@@ -182,3 +183,4 @@ spec:
   type: NodePort
   selector:
     name: redis-cluster-node 
+{% endif %}
