@@ -4,7 +4,10 @@ FROM alpine:3.6
 # author caiqyxyx
 # date 2017 12 17
 
-RUN apk add --no-cache 'su-exec>=0.2' sed bash
+RUN echo http://mirrors.aliyun.com/alpine/v3.10/main/ > /etc/apk/repositories && \
+    echo http://mirrors.aliyun.com/alpine/v3.10/community/ >> /etc/apk/repositories && \
+    apk update && apk upgrade && \
+    apk add --no-cache 'su-exec>=0.2' sed bash
 
 ENV REDIS_VERSION 5.0.3
 ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz
