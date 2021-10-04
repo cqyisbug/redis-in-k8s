@@ -2,15 +2,17 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: redis-sa
+  namespace: {{ k8s_namespace }}
   labels: 
-    app: redis
+    app: redis-cluster
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: redis-cr
+  namespace: {{ k8s_namespace }}
   labels: 
-    app: redis
+    app: redis-cluster
 rules:
 - apiGroups:
   - '*'
@@ -27,13 +29,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata: 
   name: read-crbind
-  namespace: default
+  namespace: {{ k8s_namespace }}
   labels: 
-    app: redis
+    app: redis-cluster
 subjects:
 - kind: ServiceAccount
   name: redis-sa
-  namespace: default
+  namespace: {{ k8s_namespace }}
 roleRef:
   kind: ClusterRole
   name:  redis-cr
@@ -43,13 +45,14 @@ apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: redis-ctrl-center
+  namespace: {{ k8s_namespace }}
 spec:
   replicas: 1
   template:
     metadata:
       labels:
         name: redis-ctrl-center
-        app: redis
+        app: redis-cluster
     spec:
       terminationGracePeriodSeconds: 10
       serviceAccountName: redis-sa
@@ -83,6 +86,7 @@ apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
   name: redis-cluster-node
+  namespace: {{ k8s_namespace }}
 spec:
   serviceName: "redis-cluster-svc"
   replicas: {{ redis_statefulset_replicas }}
@@ -90,7 +94,7 @@ spec:
     metadata:
       labels:
         name: redis-cluster-node
-        app: redis
+        app: redis-cluster
     spec:
       hostNetwork: {{ hostnetwork }}
       dnsPolicy: ClusterFirstWithHostNet
@@ -150,9 +154,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis-cluster-svc
+  namespace: {{ k8s_namespace }}
   labels:
     name: redis-cluster-svc
-    app: redis
+    app: redis-cluster
 spec:
   ports:
   - port: 6379
@@ -160,14 +165,16 @@ spec:
   clusterIP: None
   selector:
     name: redis-cluster-node
+{% if hostnetwork %}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: redis-cluster-svc-np
+  namespace: {{ k8s_namespace }}
   labels:
     name: redis-cluster-svc-np
-    app: redis
+    app: redis-cluster
 spec:
   ports:
   - port: 6379
@@ -176,3 +183,4 @@ spec:
   type: NodePort
   selector:
     name: redis-cluster-node 
+{% endif %}
